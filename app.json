@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "اندلس فيت",
+    "slug": "andulusvet-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#f9a825"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "android": {
+      "package": "com.andulusvet.app"
+    },
+    "ios": {
+      "bundleIdentifier": "com.andulusvet.app"
+    }
+  }
+}
