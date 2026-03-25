@@ -1,14 +1,62 @@
-import React, { useContext } from 'react';
-import { Alert, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useContext, useMemo, useState } from 'react';
+import { Alert, Linking, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppContext } from '../context/AppContext';
 import { colors } from '../theme/colors';
 
-const RESERVATION_EMAIL = 'salamadil1233@gmail.com';
+const WHATSAPP_PHONE = '9647801730506';
+
+const IRAQ_GOVERNORATES = [
+  'بغداد',
+  'البصرة',
+  'نينوى',
+  'أربيل',
+  'النجف',
+  'كربلاء',
+  'السليمانية',
+  'ذي قار',
+  'بابل',
+  'الأنبار',
+  'ديالى',
+  'صلاح الدين',
+  'كركوك',
+  'واسط',
+  'ميسان',
+  'المثنى',
+  'القادسية',
+  'دهوك'
+];
+
+const BAGHDAD_DISTRICTS = [
+  'الكرادة',
+  'المنصور',
+  'العامرية',
+  'الكاظمية',
+  'الأعظمية',
+  'الصدر',
+  'زيونة',
+  'الدورة',
+  'الجادرية',
+  'الغدير',
+  'البلديات',
+  'اليوسفية',
+  'أبو غريب',
+  'الشعلة',
+  'البياع'
+];
 
 export default function CartScreen() {
   const insets = useSafeAreaInsets();
   const { cart, cartTotal, changeQty, removeFromCart, clearCart } = useContext(AppContext);
+
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [governorate, setGovernorate] = useState('بغداد');
+  const [district, setDistrict] = useState('');
+  const [showGovernorates, setShowGovernorates] = useState(false);
+  const [showDistricts, setShowDistricts] = useState(false);
+
+  const isBaghdad = useMemo(() => governorate === 'بغداد', [governorate]);
 
   const reserveOrder = async () => {
     if (!cart.length) {
@@ -16,36 +64,51 @@ export default function CartScreen() {
       return;
     }
 
+    if (!customerName.trim() || !customerPhone.trim()) {
+      Alert.alert('بيانات ناقصة', 'يرجى إدخال الاسم ورقم الهاتف.');
+      return;
+    }
+
+    if (isBaghdad && !district) {
+      Alert.alert('اختر المنطقة', 'يرجى اختيار قضاء/منطقة داخل بغداد.');
+      return;
+    }
+
     const lines = cart.map(
       (item) => `- ${item.name} | الكمية: ${item.qty} | السعر: ${item.price.toLocaleString('ar-IQ')} د.ع`
     );
 
+    const locationLine = isBaghdad ? `${governorate} - ${district}` : governorate;
     const body = [
       'طلب حجز جديد (الدفع عند الاستلام)',
       '',
+      `الاسم: ${customerName.trim()}`,
+      `الهاتف: ${customerPhone.trim()}`,
+      `الموقع: ${locationLine}`,
+      '',
+      'تفاصيل الطلب:',
       ...lines,
       '',
       `المجموع: ${cartTotal.toLocaleString('ar-IQ')} د.ع`
     ].join('\n');
 
-    const mailto = `mailto:${RESERVATION_EMAIL}?subject=${encodeURIComponent('حجز طلب جديد من التطبيق')}&body=${encodeURIComponent(body)}`;
-
-    const supported = await Linking.canOpenURL(mailto);
+    const whatsappUrl = `https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(body)}`;
+    const supported = await Linking.canOpenURL(whatsappUrl);
     if (!supported) {
-      Alert.alert('تعذر فتح البريد', 'يرجى إعداد تطبيق بريد على الهاتف.');
+      Alert.alert('تعذر الفتح', 'تعذر فتح واتساب على هذا الجهاز.');
       return;
     }
 
-    await Linking.openURL(mailto);
-    Alert.alert('تم تجهيز الرسالة', 'تم فتح البريد لإرسال طلب الحجز.');
+    await Linking.openURL(whatsappUrl);
+    Alert.alert('تم', 'تم فتح واتساب لإرسال طلب الحجز.');
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <Text style={styles.title}>السلة</Text>
-      <Text style={styles.subtitle}>جميع الطلبات: دفع عند الاستلام فقط</Text>
+      <Text style={styles.subtitle}>الدفع عند الاستلام فقط</Text>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 180, paddingTop: 12 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 260, paddingTop: 12 }}>
         {!cart.length && <Text style={styles.empty}>لا توجد منتجات في السلة.</Text>}
 
         {cart.map((item) => (
@@ -67,12 +130,84 @@ export default function CartScreen() {
             </View>
           </View>
         ))}
+
+        <View style={styles.formCard}>
+          <Text style={styles.formTitle}>بيانات الحجز</Text>
+
+          <Text style={styles.label}>اسم المستلم</Text>
+          <TextInput
+            style={styles.input}
+            value={customerName}
+            onChangeText={setCustomerName}
+            placeholder="الاسم الكامل"
+            placeholderTextColor="#8f99b0"
+            textAlign="right"
+          />
+
+          <Text style={styles.label}>رقم الهاتف</Text>
+          <TextInput
+            style={styles.input}
+            value={customerPhone}
+            onChangeText={setCustomerPhone}
+            placeholder="07xx xxx xxxx"
+            placeholderTextColor="#8f99b0"
+            keyboardType="phone-pad"
+            textAlign="right"
+          />
+
+          <Text style={styles.label}>المحافظة</Text>
+          <TouchableOpacity style={styles.selectBtn} onPress={() => setShowGovernorates((prev) => !prev)}>
+            <Text style={styles.selectTxt}>{governorate}</Text>
+          </TouchableOpacity>
+          {showGovernorates && (
+            <View style={styles.menu}>
+              {IRAQ_GOVERNORATES.map((city) => (
+                <TouchableOpacity
+                  key={city}
+                  style={[styles.menuItem, governorate === city && styles.menuItemActive]}
+                  onPress={() => {
+                    setGovernorate(city);
+                    setShowGovernorates(false);
+                    setDistrict('');
+                  }}
+                >
+                  <Text style={styles.menuTxt}>{city}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          {isBaghdad && (
+            <>
+              <Text style={styles.label}>القضاء / المنطقة (بغداد)</Text>
+              <TouchableOpacity style={styles.selectBtn} onPress={() => setShowDistricts((prev) => !prev)}>
+                <Text style={styles.selectTxt}>{district || 'اختر المنطقة'}</Text>
+              </TouchableOpacity>
+              {showDistricts && (
+                <View style={styles.menu}>
+                  {BAGHDAD_DISTRICTS.map((d) => (
+                    <TouchableOpacity
+                      key={d}
+                      style={[styles.menuItem, district === d && styles.menuItemActive]}
+                      onPress={() => {
+                        setDistrict(d);
+                        setShowDistricts(false);
+                      }}
+                    >
+                      <Text style={styles.menuTxt}>{d}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </>
+          )}
+        </View>
       </ScrollView>
 
       <View style={[styles.footer, { bottom: insets.bottom + 10 }]}>
         <Text style={styles.total}>المجموع: {cartTotal.toLocaleString('ar-IQ')} د.ع</Text>
         <TouchableOpacity style={styles.reserveBtn} onPress={reserveOrder}>
-          <Text style={styles.reserveTxt}>تأكيد الحجز</Text>
+          <Text style={styles.reserveTxt}>إرسال الحجز عبر واتساب</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={clearCart}>
           <Text style={styles.clearTxt}>تفريغ السلة</Text>
@@ -157,6 +292,71 @@ const styles = StyleSheet.create({
     color: '#ba2222',
     fontWeight: '700'
   },
+  formCard: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 10,
+    backgroundColor: '#fff'
+  },
+  formTitle: {
+    textAlign: 'right',
+    color: colors.secondary,
+    fontWeight: '900',
+    fontSize: 18,
+    marginBottom: 10
+  },
+  label: {
+    textAlign: 'right',
+    color: colors.secondary,
+    marginBottom: 6,
+    fontWeight: '800'
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 10,
+    color: colors.text,
+    backgroundColor: '#fff'
+  },
+  selectBtn: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    marginBottom: 8,
+    backgroundColor: '#fff'
+  },
+  selectTxt: {
+    textAlign: 'right',
+    color: colors.text,
+    fontWeight: '700'
+  },
+  menu: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    marginBottom: 10,
+    overflow: 'hidden'
+  },
+  menuItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: '#fff'
+  },
+  menuItemActive: {
+    backgroundColor: '#e9efff'
+  },
+  menuTxt: {
+    textAlign: 'right',
+    color: colors.text,
+    fontWeight: '700'
+  },
   footer: {
     position: 'absolute',
     left: 16,
@@ -174,13 +374,13 @@ const styles = StyleSheet.create({
   },
   reserveBtn: {
     marginTop: 10,
-    backgroundColor: colors.primary,
+    backgroundColor: '#25D366',
     borderRadius: 12,
     alignItems: 'center',
     paddingVertical: 12
   },
   reserveTxt: {
-    color: colors.secondary,
+    color: '#fff',
     fontWeight: '900'
   },
   clearTxt: {

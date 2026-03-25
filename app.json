@@ -16,6 +16,12 @@
     },
     "ios": {
       "bundleIdentifier": "com.andulusvet.app"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "540d85f1-4ed7-459b-a20c-4ebe00fe1b17"
+      }
+    },
+    "owner": "theonlysam"
   }
 }

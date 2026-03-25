@@ -5,6 +5,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppProvider } from './src/context/AppContext';
+import HomeScreen from './src/screens/HomeScreen';
 import ShopScreen from './src/screens/ShopScreen';
 import CategoriesScreen from './src/screens/CategoriesScreen';
 import CartScreen from './src/screens/CartScreen';
@@ -34,6 +35,7 @@ function AppTabs() {
   const insets = useSafeAreaInsets();
 
   const iconByRoute = {
+    الرئيسية: 'home',
     المتجر: 'storefront',
     التصنيفات: 'grid',
     السلة: 'cart',
@@ -44,7 +46,7 @@ function AppTabs() {
   return (
     <NavigationContainer theme={navTheme}>
       <Tab.Navigator
-        initialRouteName="المتجر"
+        initialRouteName="الرئيسية"
         screenOptions={({ route }) => ({
           headerShown: false,
           tabBarActiveTintColor: colors.secondary,
@@ -70,6 +72,7 @@ function AppTabs() {
           }
         })}
       >
+        <Tab.Screen name="الرئيسية" component={HomeScreen} />
         <Tab.Screen name="المتجر" component={ShopScreen} />
         <Tab.Screen name="التصنيفات" component={CategoriesScreen} />
         <Tab.Screen name="السلة" component={CartScreen} />
