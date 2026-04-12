@@ -1,4 +1,76 @@
-import { animalTypes, brands, categories, detailedFoodCategories, products } from '../data/mockData';
+const brands = [
+  'رويال كانين',
+  'بورينا',
+  'هيلز',
+  'فيت لايف',
+  'بي فارما',
+  'إكو فيت',
+  'جرين فارم',
+  'هاي بيت'
+];
+
+const animalTypes = [
+  { id: 'cat', name: 'قطط' },
+  { id: 'dog', name: 'كلاب' },
+  { id: 'bird', name: 'طيور' },
+  { id: 'cattle', name: 'مواشي' },
+  { id: 'horse', name: 'خيول' }
+];
+
+const categories = [
+  {
+    id: 'c1',
+    name: 'أطعمة جافة',
+    image:
+      'https://images.unsplash.com/photo-1589924691995-400dc9ecc119?auto=format&fit=crop&w=1200&q=80',
+    animalTypes: ['cat', 'dog', 'bird', 'cattle', 'horse']
+  },
+  {
+    id: 'c2',
+    name: 'أطعمة رطبة',
+    image:
+      'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=1200&q=80',
+    animalTypes: ['cat', 'dog']
+  },
+  {
+    id: 'c3',
+    name: 'فيتامينات',
+    image:
+      'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=1200&q=80',
+    animalTypes: ['cat', 'dog', 'bird', 'cattle', 'horse']
+  },
+  {
+    id: 'c4',
+    name: 'مستلزمات العناية',
+    image:
+      'https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?auto=format&fit=crop&w=1200&q=80',
+    animalTypes: ['cat', 'dog', 'horse']
+  },
+  {
+    id: 'c5',
+    name: 'أدوية بيطرية',
+    image:
+      'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1200&q=80',
+    animalTypes: ['cat', 'dog', 'bird', 'cattle', 'horse']
+  }
+];
+
+const detailedFoodCategories = [
+  {
+    id: 'cat_food',
+    name: 'طعام القطط',
+    animalType: 'cat',
+    image:
+      'https://images.unsplash.com/photo-1574158622682-e40e69881006?auto=format&fit=crop&w=1200&q=80'
+  },
+  {
+    id: 'dog_food',
+    name: 'طعام الكلاب',
+    animalType: 'dog',
+    image:
+      'https://images.unsplash.com/photo-1601758228041-f3b2795255f1?auto=format&fit=crop&w=1200&q=80'
+  }
+];
 
 const brandLabels = {
   'رويال كانين': { ar: 'رويال كانين', en: 'Royal Canin' },
@@ -98,11 +170,17 @@ export function getDetailedFoodCategories() {
   }));
 }
 
-export function getProducts() {
-  return products.map((item) => ({
-    ...item,
-    brand: brandLabels[item.brand] || { ar: item.brand, en: item.brand },
-    name: productLocalization[item.id]?.name || { ar: item.name, en: item.name },
-    desc: productLocalization[item.id]?.desc || { ar: item.desc, en: item.desc }
-  }));
+export function localizeProduct(product) {
+  return {
+    ...product,
+    brand: brandLabels[product.brand] || product.brand || { ar: '', en: '' },
+    name:
+      typeof product.name === 'object' && product.name
+        ? product.name
+        : productLocalization[product.id]?.name || { ar: product.name || '', en: product.name || '' },
+    desc:
+      typeof product.desc === 'object' && product.desc
+        ? product.desc
+        : productLocalization[product.id]?.desc || { ar: product.desc || '', en: product.desc || '' }
+  };
 }

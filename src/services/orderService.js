@@ -1,11 +1,11 @@
-import { calculateDiscounts, getMockDiscountRules } from './discountService';
+import { calculateDiscounts } from './discountService';
 
-export function buildCheckoutSummary(cartItems) {
-  return calculateDiscounts(cartItems, getMockDiscountRules());
+export function buildCheckoutSummary(cartItems, discountRules = []) {
+  return calculateDiscounts(cartItems, discountRules);
 }
 
-export function buildWhatsappOrderMessage({ language, t, cartItems, checkoutDraft }) {
-  const summary = buildCheckoutSummary(cartItems);
+export function buildWhatsappOrderMessage({ language, t, cartItems, checkoutDraft, summary }) {
+  const checkoutSummary = summary || buildCheckoutSummary(cartItems);
   const locale = language === 'ar' ? 'ar-IQ' : 'en-US';
   const locationLine = checkoutDraft.district
     ? `${checkoutDraft.governorate} - ${checkoutDraft.district}`
@@ -30,8 +30,8 @@ export function buildWhatsappOrderMessage({ language, t, cartItems, checkoutDraf
     '',
     ...lines,
     '',
-    `${t('cart.subtotal')}: ${summary.subtotal.toLocaleString(locale)}`,
-    `${t('cart.discount')}: ${summary.discountAmount.toLocaleString(locale)}`,
-    `${t('cart.total')}: ${summary.total.toLocaleString(locale)}`
+    `${t('cart.subtotal')}: ${checkoutSummary.subtotal.toLocaleString(locale)}`,
+    `${t('cart.discount')}: ${checkoutSummary.discountAmount.toLocaleString(locale)}`,
+    `${t('cart.total')}: ${checkoutSummary.total.toLocaleString(locale)}`
   ].join('\n');
 }

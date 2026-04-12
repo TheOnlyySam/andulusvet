@@ -102,6 +102,7 @@ export default function PetsVaccinesScreen() {
   const {
     isLoggedIn,
     currentUser,
+    currentProfile,
     vaccineBooksForUser,
     createVaccineBook,
     updateVaccineBookRecords
@@ -513,7 +514,7 @@ export default function PetsVaccinesScreen() {
           <View style={styles.card}>
             <Text style={[styles.sectionTitle, { textAlign: getTextAlign(isRTL) }]}>{t('books.ownerPetSection')}</Text>
             <Text style={[styles.helper, { textAlign: getTextAlign(isRTL) }]}>
-              {t('books.helperLoggedIn')}: {currentUser?.username || t('books.currentUserMissing')}
+              {t('books.helperLoggedIn')}: {currentProfile?.display_name || currentProfile?.username || currentUser?.email || t('books.currentUserMissing')}
             </Text>
 
             <Text style={[styles.label, { textAlign: getTextAlign(isRTL) }]}>{t('books.petImage')}</Text>

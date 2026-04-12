@@ -1,105 +1,155 @@
-import React, { useContext, useState } from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useContext } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import FormField from '../components/FormField';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import ScreenHeader from '../components/ScreenHeader';
 import { AppContext } from '../context/AppContext';
+import { APP_ROUTES } from '../constants/navigation';
 import { useLocalization } from '../context/LocalizationContext';
 import { colors, radius, shadows, spacing, typography } from '../theme';
 import { getRowDirection, getTextAlign } from '../utils/format';
 
+function ActionCard({ title, subtitle, icon, onPress, tone = 'light', isRTL }) {
+  const toneStyle = tone === 'dark' ? styles.actionCardDark : styles.actionCardLight;
+  const titleStyle = tone === 'dark' ? styles.actionTitleDark : styles.actionTitle;
+  const subtitleStyle = tone === 'dark' ? styles.actionSubtitleDark : styles.actionSubtitle;
+
+  return (
+    <Pressable style={[styles.actionCard, toneStyle]} onPress={onPress}>
+      <View style={[styles.actionHeader, { flexDirection: getRowDirection(isRTL) }]}>
+        <View style={styles.iconWrap}>
+          <Ionicons name={icon} size={20} color={tone === 'dark' ? '#fff' : colors.secondary} />
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={tone === 'dark' ? '#fff' : colors.secondary} />
+      </View>
+      <Text style={[titleStyle, { textAlign: getTextAlign(isRTL) }]}>{title}</Text>
+      <Text style={[subtitleStyle, { textAlign: getTextAlign(isRTL) }]}>{subtitle}</Text>
+    </Pressable>
+  );
+}
+
 export default function ProfileScreen() {
-  const { isReady, isLoggedIn, currentUser, authSignIn, authSignUp, authSignOut } = useContext(AppContext);
+  const navigation = useNavigation();
+  const { isReady, isLoggedIn, isAdmin, currentUser, currentProfile, authSignOut } = useContext(AppContext);
   const { isRTL, t } = useLocalization();
-  const [authMode, setAuthMode] = useState('signin');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
 
-  const submitAuth = async () => {
-    if (!username.trim() || !password.trim()) {
-      Alert.alert(t('alerts.missingData'), t('profile.missingAuth'));
-      return;
-    }
-
-    const action = authMode === 'signin' ? authSignIn : authSignUp;
-    const result = await action({ username, password });
-
-    if (!result.ok) {
-      Alert.alert(t('alerts.warning'), result.messageKey ? t(result.messageKey) : result.message || t('alerts.error'));
-      return;
-    }
-
-    setPassword('');
-    Alert.alert(t('alerts.success'), authMode === 'signin' ? t('profile.signInSuccess') : t('profile.signUpSuccess'));
-  };
+  const welcomeName =
+    currentProfile?.display_name || currentProfile?.username || currentUser?.email?.split('@')[0] || t('profile.guestName');
 
   const logout = async () => {
     await authSignOut();
-    Alert.alert(t('alerts.success'), t('profile.logoutSuccess'));
   };
 
   if (!isReady) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <ScreenHeader title={t('profile.title')} subtitle={t('common.loading')} showLanguage />
-        <View style={styles.card}>
-          <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>{t('common.loading')}</Text>
-        </View>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScreenHeader title={t('profile.title')} subtitle={t('profile.localHint')} showLanguage />
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScreenHeader title={t('profile.title')} subtitle={t('profile.accountSubtitle')} showLanguage />
 
-      {isLoggedIn ? (
-        <View style={styles.card}>
-          <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>
-            {t('profile.username')}: {currentUser.username}
+        <View style={styles.heroCard}>
+          <View style={styles.heroGlow} />
+          <Text style={[styles.kicker, { textAlign: getTextAlign(isRTL) }]}>{t('profile.welcome')}</Text>
+          <Text style={[styles.heroTitle, { textAlign: getTextAlign(isRTL) }]}>{welcomeName}</Text>
+          <Text style={[styles.heroSubtitle, { textAlign: getTextAlign(isRTL) }]}>
+            {isLoggedIn ? t('profile.accountReady') : t('profile.guestSubtitle')}
           </Text>
-          <Text style={[styles.hint, { textAlign: getTextAlign(isRTL) }]}>{t('profile.localHint')}</Text>
-          <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-            <Text style={styles.btnTxt}>{t('profile.logout')}</Text>
-          </TouchableOpacity>
+          {currentUser?.email ? (
+            <View style={styles.emailPill}>
+              <Ionicons name="mail-outline" size={15} color={colors.secondary} />
+              <Text style={styles.emailPillText}>{currentUser.email}</Text>
+            </View>
+          ) : null}
         </View>
-      ) : (
-        <View style={styles.card}>
-          <View style={[styles.modeRow, { flexDirection: getRowDirection(isRTL) }]}>
-            <TouchableOpacity
-              style={[styles.modeBtn, authMode === 'signin' && styles.modeBtnActive]}
-              onPress={() => setAuthMode('signin')}
-            >
-              <Text style={[styles.modeTxt, authMode === 'signin' && styles.modeTxtActive]}>{t('profile.signIn')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.modeBtn, authMode === 'signup' && styles.modeBtnActive]}
-              onPress={() => setAuthMode('signup')}
-            >
-              <Text style={[styles.modeTxt, authMode === 'signup' && styles.modeTxtActive]}>{t('profile.signUp')}</Text>
-            </TouchableOpacity>
+
+        <View style={styles.grid}>
+          {isLoggedIn ? (
+            <>
+              {isAdmin ? (
+                <ActionCard
+                  title={t('profile.adminPanel')}
+                  subtitle={t('profile.adminPanelHint')}
+                  icon="shield-checkmark-outline"
+                  onPress={() => navigation.navigate(APP_ROUTES.adminHome)}
+                  tone="dark"
+                  isRTL={isRTL}
+                />
+              ) : null}
+              <ActionCard
+                title={t('profile.privacyPolicy')}
+                subtitle={t('profile.privacyHint')}
+                icon="document-text-outline"
+                onPress={() => navigation.navigate(APP_ROUTES.privacyPolicy)}
+                isRTL={isRTL}
+              />
+              <ActionCard
+                title={t('profile.termsOfService')}
+                subtitle={t('profile.termsHint')}
+                icon="reader-outline"
+                onPress={() => navigation.navigate(APP_ROUTES.termsOfService)}
+                isRTL={isRTL}
+              />
+            </>
+          ) : (
+            <>
+              <ActionCard
+                title={t('profile.signIn')}
+                subtitle={t('profile.signInSubtitle')}
+                icon="log-in-outline"
+                onPress={() => navigation.navigate(APP_ROUTES.signIn)}
+                tone="dark"
+                isRTL={isRTL}
+              />
+              <ActionCard
+                title={t('profile.signUp')}
+                subtitle={t('profile.signUpSubtitle')}
+                icon="person-add-outline"
+                onPress={() => navigation.navigate(APP_ROUTES.signUp)}
+                isRTL={isRTL}
+              />
+              <ActionCard
+                title={t('profile.privacyPolicy')}
+                subtitle={t('profile.privacyHint')}
+                icon="document-text-outline"
+                onPress={() => navigation.navigate(APP_ROUTES.privacyPolicy)}
+                isRTL={isRTL}
+              />
+              <ActionCard
+                title={t('profile.termsOfService')}
+                subtitle={t('profile.termsHint')}
+                icon="reader-outline"
+                onPress={() => navigation.navigate(APP_ROUTES.termsOfService)}
+                isRTL={isRTL}
+              />
+            </>
+          )}
+        </View>
+
+        {isLoggedIn ? (
+          <View style={styles.accountCard}>
+            <Text style={[styles.accountTitle, { textAlign: getTextAlign(isRTL) }]}>{t('profile.accountDetails')}</Text>
+            <Text style={[styles.accountLine, { textAlign: getTextAlign(isRTL) }]}>
+              {t('profile.displayName')}: {welcomeName}
+            </Text>
+            <Text style={[styles.accountLine, { textAlign: getTextAlign(isRTL) }]}>
+              {t('profile.email')}: {currentUser?.email}
+            </Text>
+            <Text style={[styles.accountLine, { textAlign: getTextAlign(isRTL) }]}>
+              {t('profile.role')}: {isAdmin ? t('profile.admin') : t('profile.customer')}
+            </Text>
+            <Pressable style={styles.logoutButton} onPress={logout}>
+              <Text style={styles.logoutText}>{t('profile.logout')}</Text>
+            </Pressable>
           </View>
-
-          <FormField
-            label={t('profile.username')}
-            value={username}
-            onChangeText={setUsername}
-            autoCapitalize="none"
-            placeholder="example_user"
-          />
-          <FormField
-            label={t('profile.password')}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            placeholder="********"
-          />
-
-          <TouchableOpacity style={styles.submitBtn} onPress={submitAuth}>
-            <Text style={styles.btnTxt}>{authMode === 'signin' ? t('profile.signIn') : t('profile.signUp')}</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+        ) : null}
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -110,67 +160,140 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     paddingHorizontal: spacing.md
   },
-  card: {
+  content: {
+    paddingBottom: spacing.xxl
+  },
+  heroCard: {
+    backgroundColor: colors.secondary,
+    borderRadius: radius.xl,
+    padding: spacing.xl,
+    overflow: 'hidden',
+    ...shadows.card
+  },
+  heroGlow: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(243, 201, 119, 0.2)',
+    top: -50,
+    right: -35
+  },
+  kicker: {
+    color: '#DDEDEA',
+    fontSize: typography.bodySm,
+    fontWeight: '800'
+  },
+  heroTitle: {
+    color: '#fff',
+    fontSize: typography.hero,
+    fontWeight: '900',
+    marginTop: spacing.sm
+  },
+  heroSubtitle: {
+    color: '#DDEDEA',
+    fontSize: typography.body,
+    lineHeight: 23,
+    marginTop: spacing.sm
+  },
+  emailPill: {
     marginTop: spacing.md,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     backgroundColor: '#fff',
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10
+  },
+  emailPillText: {
+    color: colors.secondary,
+    fontWeight: '800',
+    fontSize: typography.bodySm
+  },
+  grid: {
+    marginTop: spacing.md,
+    gap: spacing.md
+  },
+  actionCard: {
+    borderRadius: radius.xl,
     padding: spacing.lg,
     ...shadows.card
   },
-  line: {
-    color: colors.text,
-    marginBottom: 10,
-    fontWeight: '700',
-    fontSize: typography.body
+  actionCardLight: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: colors.border
   },
-  hint: {
-    color: colors.textSoft,
-    marginBottom: spacing.lg,
-    fontSize: typography.bodySm,
-    lineHeight: 20
+  actionCardDark: {
+    backgroundColor: colors.primaryDeep
   },
-  modeRow: {
-    gap: 8,
+  actionHeader: {
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: spacing.md
   },
-  modeBtn: {
-    flex: 1,
+  iconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  actionTitle: {
+    color: colors.secondary,
+    fontSize: typography.h3,
+    fontWeight: '900'
+  },
+  actionTitleDark: {
+    color: '#fff',
+    fontSize: typography.h3,
+    fontWeight: '900'
+  },
+  actionSubtitle: {
+    color: colors.textSoft,
+    fontSize: typography.bodySm,
+    lineHeight: 21,
+    marginTop: 6
+  },
+  actionSubtitleDark: {
+    color: '#DDEDEA',
+    fontSize: typography.bodySm,
+    lineHeight: 21,
+    marginTop: 6
+  },
+  accountCard: {
+    marginTop: spacing.md,
+    backgroundColor: '#fff',
+    borderRadius: radius.xl,
+    padding: spacing.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingVertical: 12,
-    alignItems: 'center',
-    backgroundColor: '#F7FBF9'
+    ...shadows.card
   },
-  modeBtnActive: {
-    borderColor: colors.secondary,
-    backgroundColor: '#E9F3EE'
-  },
-  modeTxt: {
-    color: colors.textSoft,
-    fontWeight: '700'
-  },
-  modeTxtActive: {
-    color: colors.secondary
-  },
-  submitBtn: {
-    marginTop: spacing.sm,
-    borderRadius: radius.md,
-    backgroundColor: colors.secondary,
-    paddingVertical: 14,
-    alignItems: 'center'
-  },
-  logoutBtn: {
-    borderRadius: radius.md,
-    backgroundColor: colors.danger,
-    paddingVertical: 14,
-    alignItems: 'center'
-  },
-  btnTxt: {
-    color: '#fff',
+  accountTitle: {
+    color: colors.secondary,
+    fontSize: typography.h3,
     fontWeight: '900',
-    fontSize: typography.body
+    marginBottom: spacing.md
+  },
+  accountLine: {
+    color: colors.text,
+    fontSize: typography.body,
+    marginBottom: spacing.sm
+  },
+  logoutButton: {
+    marginTop: spacing.sm,
+    backgroundColor: colors.danger,
+    borderRadius: radius.md,
+    paddingVertical: 14,
+    alignItems: 'center'
+  },
+  logoutText: {
+    color: '#fff',
+    fontSize: typography.button,
+    fontWeight: '900'
   }
 });

@@ -1,29 +1,49 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BrandLogo from './BrandLogo';
+import { AppContext } from '../context/AppContext';
 import { useLocalization } from '../context/LocalizationContext';
+import { APP_ROUTES } from '../constants/navigation';
 import { colors, radius, spacing, typography } from '../theme';
 import { getRowDirection, getTextAlign } from '../utils/format';
 
 export default function ScreenHeader({ title, subtitle, showLanguage = true }) {
+  const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
+  const { unreadNotificationsCount } = React.useContext(AppContext);
   const { isRTL, language, setLanguage, t } = useLocalization();
 
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, { paddingTop: Platform.OS === 'android' ? Math.max(insets.top, spacing.md) : spacing.sm }]}>
       <View style={[styles.topRow, { flexDirection: getRowDirection(isRTL) }]}>
         <BrandLogo compact />
-        {showLanguage ? (
+        <View style={[styles.actionsRow, { flexDirection: getRowDirection(isRTL) }]}>
           <TouchableOpacity
-            style={styles.languageButton}
-            onPress={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
+            style={styles.notificationButton}
+            onPress={() => navigation.navigate(APP_ROUTES.notifications)}
           >
-            <Ionicons name="language" size={16} color={colors.secondary} />
-            <Text style={styles.languageText}>
-              {language === 'ar' ? t('common.english') : t('common.arabic')}
-            </Text>
+            <Ionicons name="notifications-outline" size={18} color={colors.secondary} />
+            {unreadNotificationsCount ? (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>{unreadNotificationsCount}</Text>
+              </View>
+            ) : null}
           </TouchableOpacity>
-        ) : null}
+          {showLanguage ? (
+            <TouchableOpacity
+              style={styles.languageButton}
+              onPress={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
+            >
+              <Ionicons name="language" size={16} color={colors.secondary} />
+              <Text style={styles.languageText}>
+                {language === 'ar' ? t('common.english') : t('common.arabic')}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
       </View>
       <Text style={[styles.title, { textAlign: getTextAlign(isRTL) }]}>{title}</Text>
       {subtitle ? <Text style={[styles.subtitle, { textAlign: getTextAlign(isRTL) }]}>{subtitle}</Text> : null}
@@ -33,13 +53,16 @@ export default function ScreenHeader({ title, subtitle, showLanguage = true }) {
 
 const styles = StyleSheet.create({
   wrap: {
-    marginTop: spacing.xs,
     marginBottom: spacing.lg
   },
   topRow: {
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing.lg
+  },
+  actionsRow: {
+    alignItems: 'center',
+    gap: 10
   },
   languageButton: {
     flexDirection: 'row',
@@ -58,6 +81,32 @@ const styles = StyleSheet.create({
     color: colors.secondary,
     fontSize: typography.bodySm,
     fontWeight: '800'
+  },
+  notificationButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  notificationBadgeText: {
+    color: colors.secondary,
+    fontSize: 10,
+    fontWeight: '900'
   },
   title: {
     color: colors.secondary,

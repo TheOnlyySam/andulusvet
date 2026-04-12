@@ -1,21 +1,33 @@
 import React, { useContext } from 'react';
-import { Platform, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { Platform, StatusBar, StyleSheet, View } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppProvider, AppContext } from './src/context/AppContext';
 import { LocalizationProvider, useLocalization } from './src/context/LocalizationContext';
+import { APP_ROUTES } from './src/constants/navigation';
 import HomeScreen from './src/screens/HomeScreen';
 import ShopScreen from './src/screens/ShopScreen';
 import CategoriesScreen from './src/screens/CategoriesScreen';
 import CartScreen from './src/screens/CartScreen';
 import PetsVaccinesScreen from './src/screens/PetsVaccinesScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import SignInScreen from './src/screens/SignInScreen';
+import SignUpScreen from './src/screens/SignUpScreen';
+import PrivacyPolicyScreen from './src/screens/PrivacyPolicyScreen';
+import TermsOfServiceScreen from './src/screens/TermsOfServiceScreen';
+import NotificationsScreen from './src/screens/NotificationsScreen';
+import AdminHomeScreen from './src/screens/AdminHomeScreen';
+import AdminProductsScreen from './src/screens/AdminProductsScreen';
+import AdminDiscountsScreen from './src/screens/AdminDiscountsScreen';
+import AdminVaccinesScreen from './src/screens/AdminVaccinesScreen';
 import ToastBanner from './src/components/ToastBanner';
 import { colors, radius, shadows } from './src/theme';
 
 const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
 
 function AppTabs() {
   const insets = useSafeAreaInsets();
@@ -40,20 +52,8 @@ function AppTabs() {
     [routeNameByKey.profile]: 'person-circle'
   };
 
-  const navTheme = {
-    ...DefaultTheme,
-    colors: {
-      ...DefaultTheme.colors,
-      background: colors.background,
-      primary: colors.secondary,
-      card: '#ffffff',
-      border: colors.border,
-      text: colors.text
-    }
-  };
-
   return (
-    <NavigationContainer theme={navTheme}>
+    <>
       <ToastBanner visible={Boolean(toast)} message={toast ? t(toast.messageKey) : ''} />
       <Tab.Navigator
         initialRouteName={routeNameByKey.home}
@@ -117,6 +117,37 @@ function AppTabs() {
         <Tab.Screen name={routeNameByKey.books} component={PetsVaccinesScreen} />
         <Tab.Screen name={routeNameByKey.profile} component={ProfileScreen} />
       </Tab.Navigator>
+    </>
+  );
+}
+
+function AppShell() {
+  const navTheme = {
+    ...DefaultTheme,
+    colors: {
+      ...DefaultTheme.colors,
+      background: colors.background,
+      primary: colors.secondary,
+      card: '#ffffff',
+      border: colors.border,
+      text: colors.text
+    }
+  };
+
+  return (
+    <NavigationContainer theme={navTheme}>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name={APP_ROUTES.tabs} component={AppTabs} />
+        <Stack.Screen name={APP_ROUTES.signIn} component={SignInScreen} />
+        <Stack.Screen name={APP_ROUTES.signUp} component={SignUpScreen} />
+        <Stack.Screen name={APP_ROUTES.privacyPolicy} component={PrivacyPolicyScreen} />
+        <Stack.Screen name={APP_ROUTES.termsOfService} component={TermsOfServiceScreen} />
+        <Stack.Screen name={APP_ROUTES.notifications} component={NotificationsScreen} />
+        <Stack.Screen name={APP_ROUTES.adminHome} component={AdminHomeScreen} />
+        <Stack.Screen name={APP_ROUTES.adminProducts} component={AdminProductsScreen} />
+        <Stack.Screen name={APP_ROUTES.adminDiscounts} component={AdminDiscountsScreen} />
+        <Stack.Screen name={APP_ROUTES.adminVaccines} component={AdminVaccinesScreen} />
+      </Stack.Navigator>
     </NavigationContainer>
   );
 }
@@ -131,7 +162,7 @@ export default function App() {
               barStyle={Platform.OS === 'ios' ? 'dark-content' : 'default'}
               backgroundColor={colors.background}
             />
-            <AppTabs />
+            <AppShell />
           </View>
         </SafeAreaProvider>
       </AppProvider>

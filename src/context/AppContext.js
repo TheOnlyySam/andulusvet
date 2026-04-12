@@ -1,13 +1,12 @@
-import React, { createContext, useEffect, useMemo, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { createContext, useCallback, useEffect, useMemo, useState } from 'react';
 import * as Notifications from 'expo-notifications';
-import { buildCheckoutSummary } from '../services/orderService';
-
-const STORAGE_KEYS = {
-  users: 'andulusvet_users_v1',
-  session: 'andulusvet_session_v1',
-  vaccineBooks: 'andulusvet_vaccine_books_v5'
-};
+import { getAuthBootstrap, signInWithRole, signOutUser, signUpWithRole } from '../services/authService';
+import { fetchProfile, upsertProfile } from '../services/profileService';
+import { fetchProductsFromRepository, createProductInRepository } from '../services/catalogRepository';
+import { fetchDiscountRulesFromRepository, createDiscountRuleInRepository } from '../services/discountRepository';
+import { fetchVaccineBooks, createVaccineBookRecord, updateVaccineBookSchedule } from '../services/bookingRepository';
+import { createNotification, fetchNotifications, markNotificationsRead } from '../services/notificationService';
+import { calculateDiscounts } from '../services/discountService';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -23,10 +22,6 @@ function uid(prefix = 'id') {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function sanitizeUsername(username) {
-  return username.trim().toLowerCase();
-}
-
 export function AppProvider({ children }) {
   const [cart, setCart] = useState([]);
   const [selectedBrand, setSelectedBrand] = useState(null);
@@ -35,130 +30,163 @@ export function AppProvider({ children }) {
   const [selectedLifeStage, setSelectedLifeStage] = useState(null);
   const [selectedFoodFocus, setSelectedFoodFocus] = useState(null);
 
-  const [users, setUsers] = useState([]);
-  const [currentUserId, setCurrentUserId] = useState(null);
-  const [vaccineBooks, setVaccineBooks] = useState([]);
   const [isReady, setIsReady] = useState(false);
   const [toast, setToast] = useState(null);
+  const [session, setSession] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [currentProfile, setCurrentProfile] = useState(null);
+  const [products, setProducts] = useState([]);
+  const [discountRules, setDiscountRules] = useState([]);
+  const [vaccineBooks, setVaccineBooks] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [isCatalogLoading, setIsCatalogLoading] = useState(false);
+  const [isNotificationsLoading, setIsNotificationsLoading] = useState(false);
+  const [isBooksLoading, setIsBooksLoading] = useState(false);
 
   useEffect(() => {
     bootstrap();
-    registerNotifications();
+    Notifications.requestPermissionsAsync().catch(() => null);
   }, []);
 
   useEffect(() => {
     if (!toast) return undefined;
-
     const timer = setTimeout(() => setToast(null), 2200);
     return () => clearTimeout(timer);
   }, [toast]);
 
-  const registerNotifications = async () => {
-    await Notifications.requestPermissionsAsync();
-  };
-
-  const bootstrap = async () => {
+  const refreshCatalog = useCallback(async () => {
+    setIsCatalogLoading(true);
     try {
-      await AsyncStorage.multiRemove([
-        'andulusvet_vaccines',
-        'andulusvet_vaccine_books_v1',
-        'andulusvet_vaccine_books_v2',
-        'andulusvet_vaccine_books_v3',
-        'andulusvet_vaccine_books_v4'
+      const [nextProducts, nextDiscounts] = await Promise.all([
+        fetchProductsFromRepository(),
+        fetchDiscountRulesFromRepository()
       ]);
+      setProducts(nextProducts);
+      setDiscountRules(nextDiscounts);
+    } finally {
+      setIsCatalogLoading(false);
+    }
+  }, []);
 
-      const [rawUsers, rawSession, rawBooks] = await Promise.all([
-        AsyncStorage.getItem(STORAGE_KEYS.users),
-        AsyncStorage.getItem(STORAGE_KEYS.session),
-        AsyncStorage.getItem(STORAGE_KEYS.vaccineBooks)
-      ]);
+  const refreshNotifications = useCallback(async (userId, role) => {
+    if (!userId || !role) {
+      setNotifications([]);
+      return;
+    }
 
-      if (rawUsers) setUsers(JSON.parse(rawUsers));
-      if (rawSession) setCurrentUserId(rawSession);
-      if (rawBooks) setVaccineBooks(JSON.parse(rawBooks));
+    setIsNotificationsLoading(true);
+    try {
+      const nextNotifications = await fetchNotifications({ userId, role });
+      setNotifications(nextNotifications);
+    } finally {
+      setIsNotificationsLoading(false);
+    }
+  }, []);
+
+  const refreshVaccineBooks = useCallback(async (userId, role) => {
+    if (!userId || !role) {
+      setVaccineBooks([]);
+      return;
+    }
+
+    setIsBooksLoading(true);
+    try {
+      const nextBooks = await fetchVaccineBooks({ userId, role });
+      setVaccineBooks(nextBooks);
+    } finally {
+      setIsBooksLoading(false);
+    }
+  }, []);
+
+  const hydrateUserState = useCallback(async (user) => {
+    if (!user) {
+      setSession(null);
+      setCurrentUser(null);
+      setCurrentProfile(null);
+      setNotifications([]);
+      setVaccineBooks([]);
+      return;
+    }
+
+    setSession({ user });
+    setCurrentUser(user);
+    const profile = await fetchProfile(user);
+    setCurrentProfile(profile);
+    await Promise.all([
+      refreshNotifications(user.id, profile?.role || 'customer'),
+      refreshVaccineBooks(user.id, profile?.role || 'customer')
+    ]);
+  }, [refreshNotifications, refreshVaccineBooks]);
+
+  const bootstrap = useCallback(async () => {
+    try {
+      const authState = await getAuthBootstrap();
+      await hydrateUserState(authState.user);
+      await refreshCatalog();
     } catch (error) {
       console.log('Unable to bootstrap app state', error);
     } finally {
       setIsReady(true);
     }
-  };
+  }, [hydrateUserState, refreshCatalog]);
 
-  const persistUsers = async (next) => {
-    setUsers(next);
-    await AsyncStorage.setItem(STORAGE_KEYS.users, JSON.stringify(next));
-  };
+  const showToast = (messageKey) => setToast({ id: uid('toast'), messageKey });
 
-  const persistSession = async (userId) => {
-    setCurrentUserId(userId);
-    if (userId) {
-      await AsyncStorage.setItem(STORAGE_KEYS.session, userId);
-    } else {
-      await AsyncStorage.removeItem(STORAGE_KEYS.session);
-    }
-  };
-
-  const persistBooks = async (next) => {
-    setVaccineBooks(next);
-    await AsyncStorage.setItem(STORAGE_KEYS.vaccineBooks, JSON.stringify(next));
-  };
-
-  const currentUser = useMemo(() => users.find((user) => user.id === currentUserId) || null, [users, currentUserId]);
-  const isLoggedIn = Boolean(currentUser);
-
-  const vaccineBooksForUser = useMemo(
-    () => vaccineBooks.filter((book) => book.userId === currentUserId),
-    [vaccineBooks, currentUserId]
-  );
-
-  const cartCount = useMemo(
-    () => cart.reduce((sum, item) => sum + item.qty, 0),
-    [cart]
-  );
-
-  const cartSummary = useMemo(() => buildCheckoutSummary(cart), [cart]);
-
-  const authSignUp = async ({ username, password }) => {
-    const cleanUsername = sanitizeUsername(username);
+  const authSignUp = async ({ email, displayName, password }) => {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanDisplayName = displayName.trim();
     const cleanPassword = password.trim();
 
-    if (!cleanUsername || !cleanPassword) {
+    if (!cleanEmail || !cleanPassword || !cleanDisplayName) {
       return { ok: false, messageKey: 'profile.missingAuth' };
     }
 
-    const exists = users.some((user) => user.username === cleanUsername);
-    if (exists) {
-      return { ok: false, message: 'Username already exists.' };
+    try {
+      const user = await signUpWithRole({
+        identifier: cleanEmail,
+        password: cleanPassword,
+        metadata: {
+          username: cleanEmail.split('@')[0],
+          display_name: cleanDisplayName,
+          role: 'customer'
+        }
+      });
+
+      const profile = await upsertProfile({
+        user,
+        username: cleanEmail.split('@')[0],
+        displayName: cleanDisplayName,
+        role: 'customer'
+      });
+
+      setCurrentProfile(profile);
+      await hydrateUserState(user);
+      return { ok: true, user };
+    } catch (error) {
+      return { ok: false, message: error.message };
     }
-
-    const nextUser = {
-      id: uid('user'),
-      username: cleanUsername,
-      password: cleanPassword,
-      createdAt: new Date().toISOString()
-    };
-
-    const nextUsers = [nextUser, ...users];
-    await persistUsers(nextUsers);
-    await persistSession(nextUser.id);
-
-    return { ok: true, user: nextUser };
   };
 
-  const authSignIn = async ({ username, password }) => {
-    const cleanUsername = sanitizeUsername(username);
+  const authSignIn = async ({ email, password }) => {
+    const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = password.trim();
 
-    const user = users.find((item) => item.username === cleanUsername && item.password === cleanPassword);
-    if (!user) {
-      return { ok: false, message: 'Invalid username or password.' };
-    }
+    try {
+      const user = await signInWithRole({
+        identifier: cleanEmail,
+        password: cleanPassword
+      });
 
-    await persistSession(user.id);
-    return { ok: true, user };
+      await hydrateUserState(user);
+      return { ok: true, user };
+    } catch (error) {
+      return { ok: false, message: error.message };
+    }
   };
 
   const authSignOut = async () => {
-    await persistSession(null);
+    await signOutUser();
+    await hydrateUserState(null);
   };
 
   const scheduleNotification = async (petName, vaccineName, dateIso) => {
@@ -193,74 +221,135 @@ export function AppProvider({ children }) {
     image,
     records
   }) => {
-    if (!currentUserId) {
+    if (!currentUser?.id) {
       return { ok: false, messageKey: 'alerts.requiredLogin' };
     }
 
-    const enrichedRecords = [];
-    for (const item of records) {
-      const notificationId = await scheduleNotification(item.petName, item.vaccineName, item.dateIso);
-      enrichedRecords.push({
-        id: uid('dose'),
-        ...item,
-        notificationId
-      });
+    try {
+      const enrichedRecords = [];
+      for (const item of records) {
+        const notificationId = await scheduleNotification(item.petName, item.vaccineName, item.dateIso);
+        enrichedRecords.push({
+          ...item,
+          notificationId,
+          created_at: new Date().toISOString()
+        });
+      }
+
+      const payload = {
+        userId: currentUser.id,
+        user_id: currentUser.id,
+        client_name: clientName,
+        location,
+        pet_name: petName,
+        pet_type: petType,
+        first_visit_date_iso: firstVisitDateIso,
+        firstVisitDateIso,
+        pet_birth_date_iso: petBirthDateIso || null,
+        owner_phone: ownerPhone || '',
+        owner_email: ownerEmail || '',
+        vet_name: vetName,
+        protocol,
+        notes: notes || '',
+        attachment: attachment || null,
+        image: image || null,
+        created_at: new Date().toISOString(),
+        records: enrichedRecords
+      };
+
+      const book = await createVaccineBookRecord(payload);
+
+      if (currentProfile?.role === 'admin') {
+        await createNotification({
+          title: { ar: 'تم إنشاء ملف لقاح', en: 'A vaccine file was created' },
+          message: { ar: `${clientName} - ${petName}`, en: `${clientName} - ${petName}` },
+          audience: 'user',
+          type: 'booking',
+          is_read: false,
+          user_id: currentUser.id
+        });
+      }
+      await refreshVaccineBooks(currentUser.id, currentProfile?.role || 'customer');
+      await refreshNotifications(currentUser.id, currentProfile?.role || 'customer');
+      return { ok: true, book };
+    } catch (error) {
+      return { ok: false, message: error.message };
     }
-
-    const book = {
-      id: uid('book'),
-      userId: currentUserId,
-      clientName,
-      location,
-      petName,
-      petType,
-      firstVisitDateIso,
-      referenceDateIso: firstVisitDateIso,
-      petBirthDateIso: petBirthDateIso || null,
-      ownerPhone: ownerPhone || '',
-      ownerEmail: ownerEmail || '',
-      vetName,
-      protocol,
-      notes: notes || '',
-      attachment: attachment || null,
-      image: image || null,
-      createdAt: new Date().toISOString(),
-      records: enrichedRecords
-    };
-
-    const next = [book, ...vaccineBooks];
-    await persistBooks(next);
-    return { ok: true, book };
   };
 
   const updateVaccineBookRecords = async ({ bookId, records }) => {
-    const target = vaccineBooks.find((book) => book.id === bookId && book.userId === currentUserId);
-    if (!target) {
-      return { ok: false, message: 'Vaccine file was not found.' };
+    try {
+      await updateVaccineBookSchedule({ bookId, records });
+      await refreshVaccineBooks(currentUser?.id, currentProfile?.role || 'customer');
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, message: error.message };
     }
-
-    const next = vaccineBooks.map((book) => {
-      if (book.id !== target.id) return book;
-
-      return {
-        ...book,
-        records: records || []
-      };
-    });
-
-    await persistBooks(next);
-    return { ok: true };
   };
 
-  const showToast = (messageKey) => setToast({ id: uid('toast'), messageKey });
+  const createAdminProduct = async (payload) => {
+    if (!isAdmin) {
+      throw new Error('Admin access is required.');
+    }
+    const created = await createProductInRepository({
+      ...payload,
+      created_by: currentUser?.id || null
+    });
+    await refreshCatalog();
+    await createNotification({
+      title: { ar: 'تمت إضافة منتج جديد', en: 'A new product was added' },
+      message: payload.name,
+      audience: 'user',
+      type: 'product',
+      is_read: false,
+      user_id: currentUser?.id || null
+    });
+    await refreshNotifications(currentUser?.id, currentProfile?.role || 'customer');
+    return created;
+  };
+
+  const createAdminDiscount = async (payload) => {
+    if (!isAdmin) {
+      throw new Error('Admin access is required.');
+    }
+    const created = await createDiscountRuleInRepository({
+      ...payload,
+      created_by: currentUser?.id || null
+    });
+    await refreshCatalog();
+    await createNotification({
+      title: { ar: 'تم إنشاء خصم جديد', en: 'A new discount was created' },
+      message: payload.label,
+      audience: 'user',
+      type: 'discount',
+      is_read: false,
+      user_id: currentUser?.id || null
+    });
+    await refreshNotifications(currentUser?.id, currentProfile?.role || 'customer');
+    return created;
+  };
+
+  const markAllNotificationsAsRead = async () => {
+    const unreadIds = notifications
+      .filter((item) => !(item.isRead || item.is_read))
+      .filter((item) => isAdmin || item.userId === currentUser?.id || item.user_id === currentUser?.id)
+      .map((item) => item.id);
+
+    if (!unreadIds.length) {
+      return;
+    }
+
+    await markNotificationsRead(unreadIds);
+    await refreshNotifications(currentUser?.id, currentProfile?.role || 'customer');
+  };
 
   const addToCart = (product) => {
     setCart((prev) => {
       const exists = prev.find((item) => item.id === product.id);
       if (exists) {
-        return prev.map((item) => (
+        return prev.map((item) =>
           item.id === product.id ? { ...item, qty: item.qty + 1 } : item
-        ));
+        );
       }
 
       return [...prev, { ...product, qty: 1 }];
@@ -292,6 +381,28 @@ export function AppProvider({ children }) {
     setSelectedFoodFocus(null);
   };
 
+  const cartCount = useMemo(
+    () => cart.reduce((sum, item) => sum + item.qty, 0),
+    [cart]
+  );
+
+  const cartSummary = useMemo(
+    () => calculateDiscounts(cart, discountRules),
+    [cart, discountRules]
+  );
+
+  const unreadNotificationsCount = useMemo(
+    () => notifications.filter((item) => !(item.isRead || item.is_read)).length,
+    [notifications]
+  );
+
+  const isLoggedIn = Boolean(currentUser);
+  const isAdmin = currentProfile?.role === 'admin';
+  const vaccineBooksForUser = useMemo(() => {
+    if (isAdmin) return vaccineBooks;
+    return vaccineBooks.filter((book) => (book.userId || book.user_id) === currentUser?.id);
+  }, [currentUser?.id, isAdmin, vaccineBooks]);
+
   const value = {
     cart,
     cartCount,
@@ -312,16 +423,31 @@ export function AppProvider({ children }) {
     selectedFoodFocus,
     setSelectedFoodFocus,
     isReady,
-    users,
-    currentUser,
-    currentUserId,
     isLoggedIn,
+    isAdmin,
+    session,
+    currentUser,
+    currentProfile,
     authSignUp,
     authSignIn,
     authSignOut,
+    products,
+    discountRules,
+    vaccineBooks,
     vaccineBooksForUser,
+    notifications,
+    unreadNotificationsCount,
+    isCatalogLoading,
+    isNotificationsLoading,
+    isBooksLoading,
+    refreshCatalog,
+    refreshNotifications,
+    refreshVaccineBooks,
     createVaccineBook,
     updateVaccineBookRecords,
+    createAdminProduct,
+    createAdminDiscount,
+    markAllNotificationsAsRead,
     toast,
     setToast
   };

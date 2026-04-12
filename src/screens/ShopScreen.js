@@ -6,11 +6,8 @@ import ProductCard from '../components/ProductCard';
 import ScreenHeader from '../components/ScreenHeader';
 import { AppContext } from '../context/AppContext';
 import { useLocalization } from '../context/LocalizationContext';
-import { getProducts } from '../services/catalogService';
 import { colors, radius, shadows, spacing, typography } from '../theme';
 import { getRowDirection, getTextAlign, pickLocalizedText } from '../utils/format';
-
-const products = getProducts();
 
 function buildSegmentCards(t) {
   return [
@@ -79,6 +76,7 @@ function FilterChip({ item, active, onPress, language }) {
 export default function ShopScreen() {
   const { language, isRTL, t } = useLocalization();
   const {
+    products,
     selectedCategory,
     selectedAnimalType,
     selectedFoodFocus,
@@ -119,7 +117,7 @@ export default function ShopScreen() {
 
       return matchesSegment && matchesType && matchesCategory && matchesFoodFocus;
     });
-  }, [currentSegment, currentType, selectedCategory, selectedFoodFocus]);
+  }, [currentSegment, currentType, products, selectedCategory, selectedFoodFocus]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
