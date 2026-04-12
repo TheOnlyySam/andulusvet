@@ -1,11 +1,12 @@
 import React, { createContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
+import { buildCheckoutSummary } from '../services/orderService';
 
 const STORAGE_KEYS = {
   users: 'andulusvet_users_v1',
   session: 'andulusvet_session_v1',
-  vaccineBooks: 'andulusvet_vaccine_books_v4'
+  vaccineBooks: 'andulusvet_vaccine_books_v5'
 };
 
 Notifications.setNotificationHandler({
@@ -38,11 +39,19 @@ export function AppProvider({ children }) {
   const [currentUserId, setCurrentUserId] = useState(null);
   const [vaccineBooks, setVaccineBooks] = useState([]);
   const [isReady, setIsReady] = useState(false);
+  const [toast, setToast] = useState(null);
 
   useEffect(() => {
     bootstrap();
     registerNotifications();
   }, []);
+
+  useEffect(() => {
+    if (!toast) return undefined;
+
+    const timer = setTimeout(() => setToast(null), 2200);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   const registerNotifications = async () => {
     await Notifications.requestPermissionsAsync();
@@ -54,7 +63,8 @@ export function AppProvider({ children }) {
         'andulusvet_vaccines',
         'andulusvet_vaccine_books_v1',
         'andulusvet_vaccine_books_v2',
-        'andulusvet_vaccine_books_v3'
+        'andulusvet_vaccine_books_v3',
+        'andulusvet_vaccine_books_v4'
       ]);
 
       const [rawUsers, rawSession, rawBooks] = await Promise.all([
@@ -66,8 +76,8 @@ export function AppProvider({ children }) {
       if (rawUsers) setUsers(JSON.parse(rawUsers));
       if (rawSession) setCurrentUserId(rawSession);
       if (rawBooks) setVaccineBooks(JSON.parse(rawBooks));
-    } catch (e) {
-      console.log('تعذر تحميل بيانات التطبيق', e);
+    } catch (error) {
+      console.log('Unable to bootstrap app state', error);
     } finally {
       setIsReady(true);
     }
@@ -92,7 +102,7 @@ export function AppProvider({ children }) {
     await AsyncStorage.setItem(STORAGE_KEYS.vaccineBooks, JSON.stringify(next));
   };
 
-  const currentUser = useMemo(() => users.find((u) => u.id === currentUserId) || null, [users, currentUserId]);
+  const currentUser = useMemo(() => users.find((user) => user.id === currentUserId) || null, [users, currentUserId]);
   const isLoggedIn = Boolean(currentUser);
 
   const vaccineBooksForUser = useMemo(
@@ -100,17 +110,24 @@ export function AppProvider({ children }) {
     [vaccineBooks, currentUserId]
   );
 
+  const cartCount = useMemo(
+    () => cart.reduce((sum, item) => sum + item.qty, 0),
+    [cart]
+  );
+
+  const cartSummary = useMemo(() => buildCheckoutSummary(cart), [cart]);
+
   const authSignUp = async ({ username, password }) => {
     const cleanUsername = sanitizeUsername(username);
     const cleanPassword = password.trim();
 
     if (!cleanUsername || !cleanPassword) {
-      return { ok: false, message: 'يرجى إدخال اسم مستخدم وكلمة مرور.' };
+      return { ok: false, messageKey: 'profile.missingAuth' };
     }
 
-    const exists = users.some((u) => u.username === cleanUsername);
+    const exists = users.some((user) => user.username === cleanUsername);
     if (exists) {
-      return { ok: false, message: 'اسم المستخدم مستخدم مسبقا.' };
+      return { ok: false, message: 'Username already exists.' };
     }
 
     const nextUser = {
@@ -131,9 +148,9 @@ export function AppProvider({ children }) {
     const cleanUsername = sanitizeUsername(username);
     const cleanPassword = password.trim();
 
-    const user = users.find((u) => u.username === cleanUsername && u.password === cleanPassword);
+    const user = users.find((item) => item.username === cleanUsername && item.password === cleanPassword);
     if (!user) {
-      return { ok: false, message: 'بيانات الدخول غير صحيحة.' };
+      return { ok: false, message: 'Invalid username or password.' };
     }
 
     await persistSession(user.id);
@@ -151,8 +168,8 @@ export function AppProvider({ children }) {
 
     return Notifications.scheduleNotificationAsync({
       content: {
-        title: 'تذكير اللقاح',
-        body: `حان موعد ${vaccineName} للحيوان ${petName}`
+        title: 'Vaccine Reminder',
+        body: `${vaccineName} is due for ${petName}`
       },
       trigger: {
         date: new Date(dateIso)
@@ -161,9 +178,11 @@ export function AppProvider({ children }) {
   };
 
   const createVaccineBook = async ({
+    clientName,
+    location,
     petName,
     petType,
-    referenceDateIso,
+    firstVisitDateIso,
     petBirthDateIso,
     ownerPhone,
     ownerEmail,
@@ -175,7 +194,7 @@ export function AppProvider({ children }) {
     records
   }) => {
     if (!currentUserId) {
-      return { ok: false, message: 'يرجى تسجيل الدخول أولا.' };
+      return { ok: false, messageKey: 'alerts.requiredLogin' };
     }
 
     const enrichedRecords = [];
@@ -191,16 +210,19 @@ export function AppProvider({ children }) {
     const book = {
       id: uid('book'),
       userId: currentUserId,
+      clientName,
+      location,
       petName,
       petType,
-      referenceDateIso,
+      firstVisitDateIso,
+      referenceDateIso: firstVisitDateIso,
       petBirthDateIso: petBirthDateIso || null,
       ownerPhone: ownerPhone || '',
       ownerEmail: ownerEmail || '',
       vetName,
       protocol,
       notes: notes || '',
-      attachment: attachment || '',
+      attachment: attachment || null,
       image: image || null,
       createdAt: new Date().toISOString(),
       records: enrichedRecords
@@ -211,55 +233,39 @@ export function AppProvider({ children }) {
     return { ok: true, book };
   };
 
-  const addManualDoseToBook = async ({ bookId, vaccineName, dateIso, notes }) => {
-    const target = vaccineBooks.find((book) => book.id === bookId && book.userId === currentUserId);
-    if (!target) {
-      return { ok: false, message: 'دفتر اللقاح غير موجود.' };
-    }
-
-    const notificationId = await scheduleNotification(target.petName, vaccineName, dateIso);
-    const nextDose = {
-      id: uid('dose'),
-      petName: target.petName,
-      petType: target.petType,
-      vaccineName,
-      dateIso,
-      notes,
-      notificationId
-    };
-
-    const next = vaccineBooks.map((book) =>
-      book.id === target.id ? { ...book, records: [nextDose, ...(book.records || [])] } : book
-    );
-
-    await persistBooks(next);
-    return { ok: true };
-  };
-
   const updateVaccineBookRecords = async ({ bookId, records }) => {
     const target = vaccineBooks.find((book) => book.id === bookId && book.userId === currentUserId);
     if (!target) {
-      return { ok: false, message: 'دفتر اللقاح غير موجود.' };
+      return { ok: false, message: 'Vaccine file was not found.' };
     }
 
-    const next = vaccineBooks.map((book) =>
-      book.id === target.id ? { ...book, records: records || [] } : book
-    );
+    const next = vaccineBooks.map((book) => {
+      if (book.id !== target.id) return book;
+
+      return {
+        ...book,
+        records: records || []
+      };
+    });
 
     await persistBooks(next);
     return { ok: true };
   };
+
+  const showToast = (messageKey) => setToast({ id: uid('toast'), messageKey });
 
   const addToCart = (product) => {
     setCart((prev) => {
       const exists = prev.find((item) => item.id === product.id);
       if (exists) {
-        return prev.map((item) =>
+        return prev.map((item) => (
           item.id === product.id ? { ...item, qty: item.qty + 1 } : item
-        );
+        ));
       }
+
       return [...prev, { ...product, qty: 1 }];
     });
+    showToast('alerts.addedToCart');
   };
 
   const removeFromCart = (id) => {
@@ -278,18 +284,23 @@ export function AppProvider({ children }) {
 
   const clearCart = () => setCart([]);
 
-  const cartTotal = useMemo(
-    () => cart.reduce((sum, item) => sum + item.price * item.qty, 0),
-    [cart]
-  );
+  const clearCatalogFilters = () => {
+    setSelectedBrand(null);
+    setSelectedCategory(null);
+    setSelectedAnimalType(null);
+    setSelectedLifeStage(null);
+    setSelectedFoodFocus(null);
+  };
 
   const value = {
     cart,
-    cartTotal,
+    cartCount,
+    cartSummary,
     addToCart,
     removeFromCart,
     changeQty,
     clearCart,
+    clearCatalogFilters,
     selectedBrand,
     setSelectedBrand,
     selectedCategory,
@@ -303,14 +314,16 @@ export function AppProvider({ children }) {
     isReady,
     users,
     currentUser,
+    currentUserId,
     isLoggedIn,
     authSignUp,
     authSignIn,
     authSignOut,
     vaccineBooksForUser,
     createVaccineBook,
-    addManualDoseToBook,
-    updateVaccineBookRecords
+    updateVaccineBookRecords,
+    toast,
+    setToast
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

@@ -5,14 +5,21 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "icon": "./assets/branding/app-icon.png",
     "splash": {
-      "backgroundColor": "#f9a825"
+      "image": "./assets/branding/splash-logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F6F3EC"
     },
     "assetBundlePatterns": [
       "**/*"
     ],
     "android": {
-      "package": "com.andulusvet.app"
+      "package": "com.andulusvet.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/branding/adaptive-icon.png",
+        "backgroundColor": "#F6F3EC"
+      }
     },
     "ios": {
       "bundleIdentifier": "com.andulusvet.app"

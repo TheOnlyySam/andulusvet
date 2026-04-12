@@ -1,18 +1,23 @@
 import React, { useContext, useState } from 'react';
-import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import FormField from '../components/FormField';
+import ScreenHeader from '../components/ScreenHeader';
 import { AppContext } from '../context/AppContext';
-import { colors } from '../theme/colors';
+import { useLocalization } from '../context/LocalizationContext';
+import { colors, radius, shadows, spacing, typography } from '../theme';
+import { getRowDirection, getTextAlign } from '../utils/format';
 
 export default function ProfileScreen() {
   const { isReady, isLoggedIn, currentUser, authSignIn, authSignUp, authSignOut } = useContext(AppContext);
+  const { isRTL, t } = useLocalization();
   const [authMode, setAuthMode] = useState('signin');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
   const submitAuth = async () => {
     if (!username.trim() || !password.trim()) {
-      Alert.alert('بيانات ناقصة', 'يرجى إدخال اسم المستخدم وكلمة المرور.');
+      Alert.alert(t('alerts.missingData'), t('profile.missingAuth'));
       return;
     }
 
@@ -20,25 +25,25 @@ export default function ProfileScreen() {
     const result = await action({ username, password });
 
     if (!result.ok) {
-      Alert.alert('تنبيه', result.message || 'تعذر تنفيذ العملية.');
+      Alert.alert(t('alerts.warning'), result.messageKey ? t(result.messageKey) : result.message || t('alerts.error'));
       return;
     }
 
     setPassword('');
-    Alert.alert('نجاح', authMode === 'signin' ? 'تم تسجيل الدخول.' : 'تم إنشاء الحساب وتسجيل الدخول.');
+    Alert.alert(t('alerts.success'), authMode === 'signin' ? t('profile.signInSuccess') : t('profile.signUpSuccess'));
   };
 
   const logout = async () => {
     await authSignOut();
-    Alert.alert('تم', 'تم تسجيل الخروج.');
+    Alert.alert(t('alerts.success'), t('profile.logoutSuccess'));
   };
 
   if (!isReady) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <Text style={styles.title}>حسابي</Text>
+        <ScreenHeader title={t('profile.title')} subtitle={t('common.loading')} showLanguage />
         <View style={styles.card}>
-          <Text style={styles.line}>جاري تحميل البيانات...</Text>
+          <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>{t('common.loading')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -46,57 +51,52 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <Text style={styles.title}>حسابي</Text>
+      <ScreenHeader title={t('profile.title')} subtitle={t('profile.localHint')} showLanguage />
 
       {isLoggedIn ? (
         <View style={styles.card}>
-          <Text style={styles.line}>اسم المستخدم: {currentUser.username}</Text>
-          <Text style={styles.hint}>هذا حساب محلي محفوظ على نفس الجهاز.</Text>
+          <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>
+            {t('profile.username')}: {currentUser.username}
+          </Text>
+          <Text style={[styles.hint, { textAlign: getTextAlign(isRTL) }]}>{t('profile.localHint')}</Text>
           <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-            <Text style={styles.btnTxt}>تسجيل الخروج</Text>
+            <Text style={styles.btnTxt}>{t('profile.logout')}</Text>
           </TouchableOpacity>
         </View>
       ) : (
         <View style={styles.card}>
-          <View style={styles.modeRow}>
+          <View style={[styles.modeRow, { flexDirection: getRowDirection(isRTL) }]}>
             <TouchableOpacity
               style={[styles.modeBtn, authMode === 'signin' && styles.modeBtnActive]}
               onPress={() => setAuthMode('signin')}
             >
-              <Text style={[styles.modeTxt, authMode === 'signin' && styles.modeTxtActive]}>تسجيل الدخول</Text>
+              <Text style={[styles.modeTxt, authMode === 'signin' && styles.modeTxtActive]}>{t('profile.signIn')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.modeBtn, authMode === 'signup' && styles.modeBtnActive]}
               onPress={() => setAuthMode('signup')}
             >
-              <Text style={[styles.modeTxt, authMode === 'signup' && styles.modeTxtActive]}>إنشاء حساب</Text>
+              <Text style={[styles.modeTxt, authMode === 'signup' && styles.modeTxtActive]}>{t('profile.signUp')}</Text>
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.label}>اسم المستخدم</Text>
-          <TextInput
-            style={styles.input}
+          <FormField
+            label={t('profile.username')}
             value={username}
             onChangeText={setUsername}
             autoCapitalize="none"
             placeholder="example_user"
-            placeholderTextColor="#8f99b0"
-            textAlign="right"
           />
-
-          <Text style={styles.label}>كلمة المرور</Text>
-          <TextInput
-            style={styles.input}
+          <FormField
+            label={t('profile.password')}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
             placeholder="********"
-            placeholderTextColor="#8f99b0"
-            textAlign="right"
           />
 
           <TouchableOpacity style={styles.submitBtn} onPress={submitAuth}>
-            <Text style={styles.btnTxt}>{authMode === 'signin' ? 'دخول' : 'تسجيل'}</Text>
+            <Text style={styles.btnTxt}>{authMode === 'signin' ? t('profile.signIn') : t('profile.signUp')}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -107,91 +107,70 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bg,
-    paddingHorizontal: 16
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '900',
-    color: colors.secondary,
-    textAlign: 'right',
-    marginTop: 4
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.md
   },
   card: {
-    marginTop: 16,
-    borderRadius: 16,
+    marginTop: spacing.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: '#fff',
-    padding: 16
+    padding: spacing.lg,
+    ...shadows.card
   },
   line: {
-    textAlign: 'right',
     color: colors.text,
     marginBottom: 10,
-    fontWeight: '700'
+    fontWeight: '700',
+    fontSize: typography.body
   },
   hint: {
-    textAlign: 'right',
-    color: colors.muted,
-    marginBottom: 16
+    color: colors.textSoft,
+    marginBottom: spacing.lg,
+    fontSize: typography.bodySm,
+    lineHeight: 20
   },
   modeRow: {
-    flexDirection: 'row-reverse',
     gap: 8,
-    marginBottom: 14
+    marginBottom: spacing.md
   },
   modeBtn: {
     flex: 1,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 10,
-    paddingVertical: 10,
+    borderRadius: radius.md,
+    paddingVertical: 12,
     alignItems: 'center',
-    backgroundColor: '#f7f8fb'
+    backgroundColor: '#F7FBF9'
   },
   modeBtnActive: {
     borderColor: colors.secondary,
-    backgroundColor: '#e9efff'
+    backgroundColor: '#E9F3EE'
   },
   modeTxt: {
-    color: colors.muted,
+    color: colors.textSoft,
     fontWeight: '700'
   },
   modeTxtActive: {
     color: colors.secondary
   },
-  label: {
-    textAlign: 'right',
-    color: colors.secondary,
-    marginBottom: 6,
-    fontWeight: '800'
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 10,
-    color: colors.text,
-    backgroundColor: '#fff'
-  },
   submitBtn: {
-    marginTop: 8,
-    borderRadius: 12,
+    marginTop: spacing.sm,
+    borderRadius: radius.md,
     backgroundColor: colors.secondary,
-    paddingVertical: 12,
+    paddingVertical: 14,
     alignItems: 'center'
   },
   logoutBtn: {
-    borderRadius: 12,
-    backgroundColor: '#b42318',
-    paddingVertical: 12,
+    borderRadius: radius.md,
+    backgroundColor: colors.danger,
+    paddingVertical: 14,
     alignItems: 'center'
   },
   btnTxt: {
     color: '#fff',
-    fontWeight: '900'
+    fontWeight: '900',
+    fontSize: typography.body
   }
 });

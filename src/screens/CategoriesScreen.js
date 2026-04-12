@@ -1,123 +1,216 @@
 import React, { useContext, useMemo } from 'react';
-import { FlatList, ImageBackground, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ImageBackground, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import BrandChip from '../components/BrandChip';
+import ScreenHeader from '../components/ScreenHeader';
 import { AppContext } from '../context/AppContext';
-import { animalTypes, categories, detailedFoodCategories } from '../data/mockData';
-import { colors } from '../theme/colors';
+import { useLocalization } from '../context/LocalizationContext';
+import { getAnimalTypes, getCategories, getDetailedFoodCategories } from '../services/catalogService';
+import { colors, radius, shadows, spacing, typography } from '../theme';
+import { getRowDirection, getTextAlign, pickLocalizedText } from '../utils/format';
+
+const animalTypes = getAnimalTypes();
+const categories = getCategories();
+const detailedFoodCategories = getDetailedFoodCategories();
+
+const animalIcons = {
+  all: 'apps-outline',
+  cat: 'logo-octocat',
+  dog: 'paw-outline',
+  bird: 'leaf-outline',
+  horse: 'flag-outline',
+  cattle: 'nutrition-outline'
+};
 
 export default function CategoriesScreen() {
   const navigation = useNavigation();
+  const { language, isRTL, t } = useLocalization();
   const {
     selectedCategory,
     setSelectedCategory,
     selectedAnimalType,
     setSelectedAnimalType,
     setSelectedFoodFocus,
-    setSelectedLifeStage
+    setSelectedLifeStage,
+    clearCatalogFilters
   } = useContext(AppContext);
 
   const visibleCategories = useMemo(() => {
     if (!selectedAnimalType) return categories;
-    return categories.filter((cat) => cat.animalTypes.includes(selectedAnimalType));
+    return categories.filter((category) => category.animalTypes.includes(selectedAnimalType));
   }, [selectedAnimalType]);
 
   const visibleDetailedFood = useMemo(() => {
     if (!selectedAnimalType) return detailedFoodCategories;
-    return detailedFoodCategories.filter((d) => d.animalType === selectedAnimalType);
+    return detailedFoodCategories.filter((item) => item.animalType === selectedAnimalType);
   }, [selectedAnimalType]);
+
+  const animalItems = useMemo(
+    () => [{ id: 'all', name: { ar: 'الكل', en: 'All' } }, ...animalTypes.map((item) => ({ id: item.id, name: item.name }))],
+    []
+  );
+
+  const selectAnimal = (animalId) => {
+    if (animalId === 'all') {
+      clearCatalogFilters();
+    } else {
+      setSelectedAnimalType(animalId);
+      setSelectedCategory(null);
+      setSelectedFoodFocus(null);
+      setSelectedLifeStage(null);
+    }
+  };
 
   const pickCategory = (id) => {
     setSelectedCategory(id);
     setSelectedFoodFocus(null);
-    navigation.navigate('المتجر');
+    navigation.navigate(t('nav.shop'));
   };
 
   const pickDetailedFood = (focusId, animalId) => {
-    setSelectedFoodFocus(focusId);
     setSelectedAnimalType(animalId);
+    setSelectedFoodFocus(focusId);
     setSelectedCategory(null);
     setSelectedLifeStage(null);
-    navigation.navigate('المتجر');
+    navigation.navigate(t('nav.shop'));
   };
-
-  const animalItems = [
-    { id: 'all', name: 'الكل' },
-    ...animalTypes.map((item) => ({ id: item.id, name: item.name }))
-  ];
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <Text style={styles.title}>التصنيفات</Text>
-      <Text style={styles.subtitle}>اختر نوع الحيوان ثم تصنيف عام أو تصنيف غذاء تفصيلي</Text>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScreenHeader title={t('categories.title')} subtitle={t('categories.subtitle')} />
 
-      <FlatList
-        horizontal
-        inverted
-        data={animalItems}
-        keyExtractor={(item) => item.id}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.animalRow}
-        renderItem={({ item }) => {
-          const active = item.id === 'all' ? !selectedAnimalType : selectedAnimalType === item.id;
-          return (
-            <BrandChip
-              label={item.name}
-              active={active}
-              onPress={() => {
-                setSelectedAnimalType(item.id === 'all' ? null : item.id);
-                setSelectedLifeStage(null);
-              }}
-            />
-          );
-        }}
-      />
+        <View style={styles.heroCard}>
+          <View style={styles.heroGlowOne} />
+          <View style={styles.heroGlowTwo} />
+          <View style={[styles.heroTopRow, { flexDirection: getRowDirection(isRTL) }]}>
+            <View style={styles.heroBadge}>
+              <Ionicons name="grid-outline" size={18} color={colors.secondary} />
+              <Text style={styles.heroBadgeText}>{language === 'ar' ? 'تصفح سريع' : 'Quick browse'}</Text>
+            </View>
+            {(selectedAnimalType || selectedCategory) ? (
+              <TouchableOpacity
+                style={styles.resetButton}
+                onPress={() => clearCatalogFilters()}
+              >
+                <Text style={styles.resetButtonText}>{language === 'ar' ? 'إعادة ضبط' : 'Reset'}</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+          <Text style={[styles.heroTitle, { textAlign: getTextAlign(isRTL) }]}>
+            {language === 'ar' ? 'اختر الحيوان ثم افتح التصنيف المناسب مباشرة' : 'Choose the animal, then jump into the right category instantly'}
+          </Text>
+          <Text style={[styles.heroSubtitle, { textAlign: getTextAlign(isRTL) }]}>
+            {language === 'ar'
+              ? 'واجهة أوضح وأهدأ تشبه الصفحة الرئيسية، مع انتقالات نظيفة نحو المتجر.'
+              : 'A calmer, clearer layout that matches the home screen and routes cleanly into the shop.'}
+          </Text>
+        </View>
 
-      <Text style={styles.sectionTitle}>تصنيفات غذاء تفصيلية</Text>
-      <FlatList
-        horizontal
-        inverted
-        data={visibleDetailedFood}
-        keyExtractor={(item) => item.id}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingVertical: 8 }}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            onPress={() => pickDetailedFood(item.id, item.animalType)}
-            style={styles.detailWrap}
-            activeOpacity={0.9}
-          >
-            <ImageBackground source={{ uri: item.image }} style={styles.detailCard} imageStyle={styles.detailImage}>
-              <View style={styles.detailOverlay}>
-                <Text style={styles.detailName}>{item.name}</Text>
-                <Text style={styles.detailHint}>ثم اختر kitten/cat أو puppy/dog في المتجر</Text>
+        <Text style={[styles.sectionTitle, { textAlign: getTextAlign(isRTL) }]}>
+          {language === 'ar' ? 'أنواع الحيوانات' : 'Animal Types'}
+        </Text>
+        <View style={[styles.chipWrap, { flexDirection: getRowDirection(isRTL) }]}>
+          {animalItems.map((item) => {
+            const active = item.id === 'all' ? !selectedAnimalType : selectedAnimalType === item.id;
+            return (
+              <View key={item.id} style={styles.chipHolder}>
+                <BrandChip
+                  label={pickLocalizedText(item.name, language)}
+                  active={active}
+                  onPress={() => selectAnimal(item.id)}
+                />
               </View>
-            </ImageBackground>
-          </TouchableOpacity>
-        )}
-      />
+            );
+          })}
+        </View>
 
-      <Text style={styles.sectionTitle}>التصنيفات العامة</Text>
-      <FlatList
-        data={visibleCategories}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingBottom: 130, paddingTop: 8 }}
-        renderItem={({ item }) => {
-          const active = selectedCategory === item.id;
-          return (
-            <TouchableOpacity onPress={() => pickCategory(item.id)} style={styles.cardWrap} activeOpacity={0.9}>
-              <ImageBackground source={{ uri: item.image }} style={styles.card} imageStyle={styles.cardImage}>
-                <View style={[styles.overlay, active && styles.overlayActive]}>
-                  <Text style={styles.cardName}>{item.name}</Text>
-                  <Text style={styles.cardHint}>اضغط للعرض في المتجر</Text>
-                </View>
-              </ImageBackground>
-            </TouchableOpacity>
-          );
-        }}
-        ListEmptyComponent={<Text style={styles.empty}>لا يوجد تصنيف لهذا النوع.</Text>}
-      />
+        {visibleDetailedFood.length ? (
+          <>
+            <View style={[styles.sectionHeaderRow, { flexDirection: getRowDirection(isRTL) }]}>
+              <Text style={[styles.sectionTitle, styles.sectionTitleCompact, { textAlign: getTextAlign(isRTL) }]}>
+                {t('categories.detailedFood')}
+              </Text>
+              <Ionicons name="nutrition-outline" size={20} color={colors.secondary} />
+            </View>
+            <View style={styles.topGrid}>
+              {visibleDetailedFood.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  onPress={() => pickDetailedFood(item.id, item.animalType)}
+                  style={styles.topGridItem}
+                  activeOpacity={0.92}
+                >
+                  <ImageBackground source={{ uri: item.image }} style={styles.topCard} imageStyle={styles.topCardImage}>
+                    <View style={styles.topCardOverlay}>
+                      <Text style={[styles.topCardTitle, { textAlign: getTextAlign(isRTL) }]}>
+                        {pickLocalizedText(item.name, language)}
+                      </Text>
+                      <Text style={[styles.topCardHint, { textAlign: getTextAlign(isRTL) }]}>
+                        {t('categories.hint')}
+                      </Text>
+                    </View>
+                  </ImageBackground>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        ) : null}
+
+        <View style={[styles.sectionHeaderRow, { flexDirection: getRowDirection(isRTL) }]}>
+          <Text style={[styles.sectionTitle, styles.sectionTitleCompact, { textAlign: getTextAlign(isRTL) }]}>
+            {t('categories.general')}
+          </Text>
+          <Ionicons name="layers-outline" size={20} color={colors.secondary} />
+        </View>
+
+        {!visibleCategories.length ? (
+          <Text style={[styles.empty, { textAlign: getTextAlign(isRTL) }]}>{t('categories.empty')}</Text>
+        ) : null}
+
+        <View style={styles.categoryStack}>
+          {visibleCategories.map((item, index) => {
+            const active = selectedCategory === item.id;
+            const accentColors = ['rgba(123,198,164,0.88)', 'rgba(74,124,155,0.82)', 'rgba(193,122,44,0.82)'];
+            return (
+              <TouchableOpacity
+                key={item.id}
+                onPress={() => pickCategory(item.id)}
+                style={styles.categoryCardWrap}
+                activeOpacity={0.92}
+              >
+                <ImageBackground source={{ uri: item.image }} style={styles.categoryCard} imageStyle={styles.categoryCardImage}>
+                  <View
+                    style={[
+                      styles.categoryOverlay,
+                      { backgroundColor: active ? accentColors[index % accentColors.length] : 'rgba(47,93,98,0.56)' }
+                    ]}
+                  >
+                    <View style={[styles.categoryIconPill, { flexDirection: getRowDirection(isRTL) }]}>
+                      <Ionicons
+                        name={animalIcons[selectedAnimalType || 'all'] || 'paw-outline'}
+                        size={16}
+                        color={colors.secondary}
+                      />
+                      <Text style={styles.categoryIconPillText}>
+                        {selectedAnimalType ? pickLocalizedText(animalTypes.find((a) => a.id === selectedAnimalType)?.name, language) : pickLocalizedText({ ar: 'عام', en: 'General' }, language)}
+                      </Text>
+                    </View>
+                    <Text style={[styles.categoryName, { textAlign: getTextAlign(isRTL) }]}>
+                      {pickLocalizedText(item.name, language)}
+                    </Text>
+                    <Text style={[styles.categoryHint, { textAlign: getTextAlign(isRTL) }]}>
+                      {t('categories.hint')}
+                    </Text>
+                  </View>
+                </ImageBackground>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -125,94 +218,186 @@ export default function CategoriesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bg,
-    paddingHorizontal: 16
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.md
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '900',
+  content: {
+    paddingBottom: 132
+  },
+  heroCard: {
+    backgroundColor: colors.secondary,
+    borderRadius: radius.xl,
+    padding: spacing.xl,
+    overflow: 'hidden',
+    marginBottom: spacing.xl,
+    ...shadows.card
+  },
+  heroGlowOne: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(243,201,119,0.24)',
+    top: -50,
+    left: -28
+  },
+  heroGlowTwo: {
+    position: 'absolute',
+    width: 148,
+    height: 148,
+    borderRadius: 74,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    bottom: -44,
+    right: -18
+  },
+  heroTopRow: {
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md
+  },
+  heroBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FFFFFF',
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8
+  },
+  heroBadgeText: {
     color: colors.secondary,
-    textAlign: 'right',
-    marginTop: 4
+    fontWeight: '800',
+    fontSize: typography.caption
   },
-  subtitle: {
-    marginTop: 4,
-    marginBottom: 8,
-    color: colors.muted,
-    textAlign: 'right'
+  resetButton: {
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8
+  },
+  resetButtonText: {
+    color: '#fff',
+    fontWeight: '800',
+    fontSize: typography.caption
+  },
+  heroTitle: {
+    color: '#fff',
+    fontSize: typography.h2,
+    fontWeight: '900',
+    lineHeight: 30
+  },
+  heroSubtitle: {
+    color: '#E7F3EE',
+    fontSize: typography.bodySm,
+    lineHeight: 22,
+    marginTop: spacing.sm
+  },
+  sectionHeaderRow: {
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm
   },
   sectionTitle: {
-    textAlign: 'right',
     color: colors.secondary,
+    fontSize: typography.h2,
     fontWeight: '900',
-    marginTop: 8
+    marginBottom: spacing.sm
   },
-  animalRow: {
-    paddingVertical: 8,
-    paddingHorizontal: 2
+  sectionTitleCompact: {
+    marginBottom: 0
   },
-  detailWrap: {
-    width: 240,
-    marginLeft: 10
+  chipWrap: {
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+    marginHorizontal: -4,
+    marginBottom: spacing.md
   },
-  detailCard: {
-    height: 110,
+  chipHolder: {
+    marginBottom: 8
+  },
+  topGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: spacing.md
+  },
+  topGridItem: {
+    width: '48.4%'
+  },
+  topCard: {
+    minHeight: 152,
     justifyContent: 'flex-end'
   },
-  detailImage: {
-    borderRadius: 14
+  topCardImage: {
+    borderRadius: radius.lg
   },
-  detailOverlay: {
-    backgroundColor: 'rgba(34,62,140,0.55)',
-    borderRadius: 14,
-    padding: 10
+  topCardOverlay: {
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    backgroundColor: 'rgba(47,93,98,0.54)',
+    minHeight: 152,
+    justifyContent: 'flex-end'
   },
-  detailName: {
+  topCardTitle: {
     color: '#fff',
-    textAlign: 'right',
-    fontSize: 18,
+    fontSize: typography.h2,
     fontWeight: '900'
   },
-  detailHint: {
-    color: '#fff',
-    textAlign: 'right',
-    marginTop: 3,
-    fontSize: 11,
-    fontWeight: '700'
+  topCardHint: {
+    color: '#F2F8F5',
+    fontSize: typography.bodySm,
+    fontWeight: '700',
+    marginTop: 4
   },
-  cardWrap: {
-    marginBottom: 10
+  categoryStack: {
+    marginTop: 2
   },
-  card: {
-    height: 120,
+  categoryCardWrap: {
+    marginBottom: spacing.md
+  },
+  categoryCard: {
+    minHeight: 178,
     justifyContent: 'flex-end'
   },
-  cardImage: {
-    borderRadius: 16
+  categoryCardImage: {
+    borderRadius: radius.xl
   },
-  overlay: {
-    backgroundColor: 'rgba(34,62,140,0.45)',
-    borderRadius: 16,
-    padding: 12
+  categoryOverlay: {
+    minHeight: 178,
+    borderRadius: radius.xl,
+    padding: spacing.xl,
+    justifyContent: 'flex-end'
   },
-  overlayActive: {
-    backgroundColor: 'rgba(249,168,37,0.72)'
+  categoryIconPill: {
+    alignSelf: 'flex-start',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FFFFFF',
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    marginBottom: spacing.lg
   },
-  cardName: {
+  categoryIconPillText: {
+    color: colors.secondary,
+    fontSize: typography.caption,
+    fontWeight: '800'
+  },
+  categoryName: {
     color: '#fff',
-    fontSize: 20,
-    fontWeight: '900',
-    textAlign: 'right'
+    fontSize: 24,
+    fontWeight: '900'
   },
-  cardHint: {
+  categoryHint: {
     color: '#fff',
-    textAlign: 'right',
-    marginTop: 4,
-    fontWeight: '700'
+    marginTop: 6,
+    fontWeight: '700',
+    fontSize: typography.body
   },
   empty: {
-    textAlign: 'center',
-    color: colors.muted,
-    marginTop: 36
+    color: colors.textSoft,
+    fontSize: typography.body,
+    marginTop: spacing.sm
   }
 });

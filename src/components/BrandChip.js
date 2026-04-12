@@ -1,8 +1,11 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity } from 'react-native';
-import { colors } from '../theme/colors';
+import { useLocalization } from '../context/LocalizationContext';
+import { colors, radius, spacing, typography } from '../theme';
 
 export default function BrandChip({ label, active, onPress }) {
+  const { isRTL } = useLocalization();
+
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -13,7 +16,7 @@ export default function BrandChip({ label, active, onPress }) {
         allowFontScaling={false}
         numberOfLines={1}
         ellipsizeMode="tail"
-        style={[styles.label, active && styles.activeLabel]}
+        style={[styles.label, { textAlign: isRTL ? 'right' : 'left' }, active && styles.activeLabel]}
       >
         {label}
       </Text>
@@ -23,15 +26,15 @@ export default function BrandChip({ label, active, onPress }) {
 
 const styles = StyleSheet.create({
   chip: {
-    minHeight: 38,
-    minWidth: 74,
-    maxWidth: 160,
+    minHeight: 42,
+    minWidth: 84,
+    maxWidth: 180,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: '#fff',
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 999,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
     marginHorizontal: 4,
     justifyContent: 'center',
     alignItems: 'center',
@@ -44,8 +47,8 @@ const styles = StyleSheet.create({
   label: {
     color: colors.secondary,
     fontWeight: '700',
-    fontSize: 13,
-    lineHeight: 17
+    fontSize: typography.caption,
+    lineHeight: 18
   },
   activeLabel: {
     color: '#fff'

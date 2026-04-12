@@ -1,127 +1,125 @@
-import React, { useMemo, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ProductCard from '../components/ProductCard';
-import { products } from '../data/mockData';
-import { colors } from '../theme/colors';
+import ScreenHeader from '../components/ScreenHeader';
+import { AppContext } from '../context/AppContext';
+import { useLocalization } from '../context/LocalizationContext';
+import { getProducts } from '../services/catalogService';
+import { colors, radius, shadows, spacing, typography } from '../theme';
+import { getRowDirection, getTextAlign, pickLocalizedText } from '../utils/format';
 
-const segmentCards = [
-  {
-    id: 'kitten',
-    label: 'قطط صغيرة',
-    subtitle: 'مرحلة النمو',
-    match: (p) => p.animalType === 'cat' && p.lifeStage === 'kitten'
-  },
-  {
-    id: 'cat',
-    label: 'قطط بالغة',
-    subtitle: 'مرحلة البلوغ',
-    match: (p) => p.animalType === 'cat' && p.lifeStage === 'cat'
-  },
-  {
-    id: 'puppy',
-    label: 'جراء',
-    subtitle: 'مرحلة النمو',
-    match: (p) => p.animalType === 'dog' && p.lifeStage === 'puppy'
-  },
-  {
-    id: 'dog',
-    label: 'كلاب بالغة',
-    subtitle: 'مرحلة البلوغ',
-    match: (p) => p.animalType === 'dog' && p.lifeStage === 'dog'
-  },
-  {
-    id: 'horse',
-    label: 'خيول',
-    subtitle: 'كل المراحل',
-    match: (p) => p.animalType === 'horse'
-  },
-  {
-    id: 'cattle',
-    label: 'مواشي',
-    subtitle: 'كل المراحل',
-    match: (p) => p.animalType === 'cattle'
-  }
-];
+const products = getProducts();
 
-const typeCards = [
-  { id: 'all', label: 'كل الأصناف', match: () => true },
-  { id: 'dry', label: 'أكل جاف', match: (p) => p.categoryId === 'c1' },
-  { id: 'wet', label: 'أكل رطب', match: (p) => p.categoryId === 'c2' },
-  { id: 'litter', label: 'رمل قطط', match: (p) => p.categoryId === 'c4' && p.animalType === 'cat' },
-  { id: 'toys', label: 'ألعاب', match: (p) => p.categoryId === 'c4' },
-  { id: 'accessories', label: 'إكسسوارات', match: (p) => p.categoryId === 'c4' },
-  { id: 'offers', label: 'عروض', match: (p) => p.price <= 18000 }
-];
+function buildSegmentCards(t) {
+  return [
+    {
+      id: 'cat',
+      label: { ar: 'قطط', en: 'Cats' },
+      subtitle: { ar: 'كل المراحل', en: 'All stages' },
+      match: (product) => product.animalType === 'cat'
+    },
+    {
+      id: 'dog',
+      label: { ar: 'كلاب', en: 'Dogs' },
+      subtitle: { ar: 'كل المراحل', en: 'All stages' },
+      match: (product) => product.animalType === 'dog'
+    },
+    {
+      id: 'horse',
+      label: { ar: 'خيول', en: 'Horses' },
+      subtitle: { ar: 'كل المراحل', en: 'All stages' },
+      match: (product) => product.animalType === 'horse'
+    },
+    {
+      id: 'cattle',
+      label: { ar: 'مواشي', en: 'Cattle' },
+      subtitle: { ar: 'كل المراحل', en: 'All stages' },
+      match: (product) => product.animalType === 'cattle'
+    },
+    {
+      id: 'bird',
+      label: { ar: 'طيور', en: 'Birds' },
+      subtitle: { ar: 'رعاية يومية', en: 'Daily care' },
+      match: (product) => product.animalType === 'bird'
+    },
+    {
+      id: 'all',
+      label: { ar: 'الكل', en: 'All' },
+      subtitle: { ar: 'كل الحيوانات', en: 'All animals' },
+      match: () => true
+    }
+  ];
+}
 
-function FilterChip({ item, active, onPress }) {
+function buildTypeCards(t) {
+  return [
+    { id: 'all', label: t('shop.allTypes'), match: () => true },
+    { id: 'dry', label: t('shop.dryFood'), match: (product) => product.categoryId === 'c1' },
+    { id: 'wet', label: t('shop.wetFood'), match: (product) => product.categoryId === 'c2' },
+    { id: 'vitamins', label: { ar: 'فيتامينات', en: 'Vitamins' }, match: (product) => product.categoryId === 'c3' },
+    { id: 'litter', label: t('shop.litter'), match: (product) => product.categoryId === 'c4' && product.animalType === 'cat' },
+    { id: 'toys', label: t('shop.toys'), match: (product) => product.categoryId === 'c4' },
+    { id: 'meds', label: { ar: 'أدوية', en: 'Medicine' }, match: (product) => product.categoryId === 'c5' },
+    { id: 'offers', label: t('shop.offer'), match: (product) => product.price <= 18000 }
+  ];
+}
+
+function FilterChip({ item, active, onPress, language }) {
   return (
     <Pressable onPress={onPress} style={[styles.filterChip, active && styles.filterChipActive]}>
-      <Text allowFontScaling={false} numberOfLines={1} style={[styles.filterTitle, active && styles.filterTitleActive]}>
-        {item.label}
+      <Text numberOfLines={1} style={[styles.filterTitle, active && styles.filterTitleActive]}>
+        {pickLocalizedText(item.label, language)}
       </Text>
-      {item.subtitle ? (
-        <Text allowFontScaling={false} numberOfLines={1} style={[styles.filterSub, active && styles.filterSubActive]}>
-          {item.subtitle}
-        </Text>
-      ) : null}
     </Pressable>
   );
 }
 
-function Header({ selectedSegment, setSelectedSegment, selectedType, setSelectedType }) {
-  return (
-    <View>
-      <Text style={styles.title}>المتجر</Text>
-      <Text style={styles.subtitle}>اختر فئة الحيوان ثم صنف المنتج</Text>
-
-      <Text style={styles.rowLabel}>فئة الحيوان</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-        {segmentCards.map((item) => (
-          <FilterChip
-            key={item.id}
-            item={item}
-            active={selectedSegment === item.id}
-            onPress={() => {
-              setSelectedSegment(item.id);
-              setSelectedType('all');
-            }}
-          />
-        ))}
-      </ScrollView>
-
-      <Text style={styles.rowLabel}>صنف المنتج</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rowBottom}>
-        {typeCards.map((item) => (
-          <FilterChip
-            key={item.id}
-            item={item}
-            active={selectedType === item.id}
-            onPress={() => setSelectedType(item.id)}
-          />
-        ))}
-      </ScrollView>
-    </View>
-  );
-}
-
 export default function ShopScreen() {
-  const [selectedSegment, setSelectedSegment] = useState('kitten');
+  const { language, isRTL, t } = useLocalization();
+  const {
+    selectedCategory,
+    selectedAnimalType,
+    selectedFoodFocus,
+    clearCatalogFilters,
+    setSelectedAnimalType,
+    setSelectedFoodFocus,
+    setSelectedCategory
+  } = useContext(AppContext);
+  const segmentCards = useMemo(() => buildSegmentCards(t), [t]);
+  const typeCards = useMemo(() => buildTypeCards(t), [t]);
+
+  const initialSegment = selectedAnimalType || 'all';
+  const [selectedSegment, setSelectedSegment] = useState(initialSegment);
   const [selectedType, setSelectedType] = useState('all');
+
+  useEffect(() => {
+    setSelectedSegment(selectedAnimalType || 'all');
+  }, [selectedAnimalType]);
 
   const currentSegment = useMemo(
     () => segmentCards.find((item) => item.id === selectedSegment) || segmentCards[0],
-    [selectedSegment]
+    [segmentCards, selectedSegment]
   );
 
   const currentType = useMemo(
     () => typeCards.find((item) => item.id === selectedType) || typeCards[0],
-    [selectedType]
+    [selectedType, typeCards]
   );
 
   const visibleProducts = useMemo(() => {
-    return products.filter((p) => currentSegment.match(p) && currentType.match(p));
-  }, [currentSegment, currentType]);
+    return products.filter((product) => {
+      const matchesSegment = currentSegment.match(product);
+      const matchesType = currentType.match(product);
+      const matchesCategory = selectedCategory ? product.categoryId === selectedCategory : true;
+      const matchesFoodFocus = selectedFoodFocus
+        ? product.animalType === selectedFoodFocus.replace('_food', '')
+        : true;
+
+      return matchesSegment && matchesType && matchesCategory && matchesFoodFocus;
+    });
+  }, [currentSegment, currentType, selectedCategory, selectedFoodFocus]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -130,15 +128,82 @@ export default function ShopScreen() {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <ProductCard product={item} />}
         ListHeaderComponent={
-          <Header
-            selectedSegment={selectedSegment}
-            setSelectedSegment={setSelectedSegment}
-            selectedType={selectedType}
-            setSelectedType={setSelectedType}
-          />
+          <View>
+            <ScreenHeader title={t('shop.title')} subtitle={t('shop.subtitle')} />
+
+            <View style={styles.filterPanel}>
+              <View style={[styles.filterPanelHeader, { flexDirection: getRowDirection(isRTL) }]}>
+                <View style={[styles.filterSectionTitleWrap, { flexDirection: getRowDirection(isRTL) }]}>
+                  <Ionicons name="paw-outline" size={16} color={colors.secondary} />
+                  <Text style={[styles.rowLabel, styles.rowLabelCompact, { textAlign: getTextAlign(isRTL) }]}>
+                    {t('shop.animalSection')}
+                  </Text>
+                </View>
+                {(selectedCategory || selectedFoodFocus || selectedAnimalType) ? (
+                  <Pressable
+                    onPress={() => {
+                      clearCatalogFilters();
+                      setSelectedSegment('all');
+                      setSelectedType('all');
+                    }}
+                    style={styles.resetChip}
+                  >
+                    <Text style={styles.resetChipText}>{language === 'ar' ? 'مسح' : 'Reset'}</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={[styles.row, { flexDirection: getRowDirection(isRTL) }]}
+              >
+                {segmentCards.map((item) => (
+                  <FilterChip
+                    key={item.id}
+                    item={item}
+                    language={language}
+                    active={selectedSegment === item.id}
+                    onPress={() => {
+                      setSelectedSegment(item.id);
+                      setSelectedAnimalType(item.id === 'all' ? null : item.id);
+                      if (item.id === 'all') {
+                        setSelectedFoodFocus(null);
+                        setSelectedCategory(null);
+                      }
+                      setSelectedType('all');
+                    }}
+                  />
+                ))}
+              </ScrollView>
+
+              <View style={[styles.filterSectionTitleWrap, styles.productSectionTitle, { flexDirection: getRowDirection(isRTL) }]}>
+                <Ionicons name="options-outline" size={16} color={colors.secondary} />
+                <Text style={[styles.rowLabel, styles.rowLabelCompact, { textAlign: getTextAlign(isRTL) }]}>
+                  {t('shop.productSection')}
+                </Text>
+              </View>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={[styles.rowBottom, { flexDirection: getRowDirection(isRTL) }]}
+              >
+                {typeCards.map((item) => (
+                  <FilterChip
+                    key={item.id}
+                    item={item}
+                    language={language}
+                    active={selectedType === item.id}
+                    onPress={() => setSelectedType(item.id)}
+                  />
+                ))}
+              </ScrollView>
+            </View>
+          </View>
         }
         contentContainerStyle={styles.listContent}
-        ListEmptyComponent={<Text style={styles.empty}>لا توجد منتجات في هذا التصنيف حاليًا.</Text>}
+        ListEmptyComponent={<Text style={styles.empty}>{t('shop.empty')}</Text>}
       />
     </SafeAreaView>
   );
@@ -147,52 +212,65 @@ export default function ShopScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bg
+    backgroundColor: colors.background
   },
   listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 150,
+    paddingHorizontal: spacing.md,
+    paddingBottom: 160,
     paddingTop: 4
   },
-  title: {
-    fontSize: 30,
-    fontWeight: '900',
-    color: colors.secondary,
-    textAlign: 'right'
-  },
-  subtitle: {
-    marginTop: 5,
-    marginBottom: 8,
-    color: colors.muted,
-    textAlign: 'right'
-  },
   rowLabel: {
-    textAlign: 'right',
     color: colors.secondary,
-    fontWeight: '800',
-    marginTop: 6,
-    marginBottom: 4
+    fontWeight: '900',
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
+    fontSize: typography.label
+  },
+  rowLabelCompact: {
+    marginTop: 0,
+    marginBottom: 0,
+    fontSize: typography.bodySm
+  },
+  filterPanel: {
+    backgroundColor: '#F8FBF8',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.md
+  },
+  filterPanelHeader: {
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm
+  },
+  filterSectionTitleWrap: {
+    alignItems: 'center',
+    gap: 6
+  },
+  productSectionTitle: {
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm
   },
   row: {
-    paddingBottom: 8,
+    paddingBottom: 2,
     paddingHorizontal: 2,
-    flexDirection: 'row-reverse',
     alignItems: 'center'
   },
   rowBottom: {
-    paddingBottom: 10,
+    paddingBottom: 2,
     paddingHorizontal: 2,
-    flexDirection: 'row-reverse',
     alignItems: 'center'
   },
   filterChip: {
-    minWidth: 100,
-    height: 52,
-    borderRadius: 14,
+    minWidth: 78,
+    minHeight: 38,
+    borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: '#fff',
-    paddingHorizontal: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     marginHorizontal: 4,
     justifyContent: 'center',
     alignItems: 'center'
@@ -204,27 +282,28 @@ const styles = StyleSheet.create({
   filterTitle: {
     textAlign: 'center',
     color: colors.secondary,
-    fontWeight: '900',
-    fontSize: 13,
-    lineHeight: 16
+    fontWeight: '800',
+    fontSize: typography.bodySm,
+    lineHeight: 18
   },
   filterTitleActive: {
     color: '#fff'
   },
-  filterSub: {
-    textAlign: 'center',
-    color: colors.muted,
-    fontWeight: '700',
-    fontSize: 10,
-    lineHeight: 13,
-    marginTop: 2
-  },
-  filterSubActive: {
-    color: '#dbe3ff'
-  },
   empty: {
     textAlign: 'center',
-    color: colors.muted,
-    marginTop: 32
+    color: colors.textSoft,
+    marginTop: 32,
+    fontSize: typography.body
+  },
+  resetChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: radius.pill,
+    backgroundColor: '#EEF3F1'
+  },
+  resetChipText: {
+    color: colors.secondary,
+    fontWeight: '800',
+    fontSize: typography.caption
   }
 });

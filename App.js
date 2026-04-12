@@ -1,83 +1,121 @@
-import React from 'react';
-import { I18nManager, Platform, StatusBar, StyleSheet, View } from 'react-native';
+import React, { useContext } from 'react';
+import { Platform, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppProvider } from './src/context/AppContext';
+import { AppProvider, AppContext } from './src/context/AppContext';
+import { LocalizationProvider, useLocalization } from './src/context/LocalizationContext';
 import HomeScreen from './src/screens/HomeScreen';
 import ShopScreen from './src/screens/ShopScreen';
 import CategoriesScreen from './src/screens/CategoriesScreen';
 import CartScreen from './src/screens/CartScreen';
 import PetsVaccinesScreen from './src/screens/PetsVaccinesScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
-import { colors } from './src/theme/colors';
-
-if (!I18nManager.isRTL) {
-  I18nManager.allowRTL(true);
-}
+import ToastBanner from './src/components/ToastBanner';
+import { colors, radius, shadows } from './src/theme';
 
 const Tab = createBottomTabNavigator();
 
-const navTheme = {
-  ...DefaultTheme,
-  colors: {
-    ...DefaultTheme.colors,
-    background: colors.bg,
-    primary: colors.secondary,
-    card: '#ffffff',
-    border: colors.border,
-    text: colors.text
-  }
-};
-
 function AppTabs() {
   const insets = useSafeAreaInsets();
+  const { t, isRTL } = useLocalization();
+  const { cartCount, toast } = useContext(AppContext);
+
+  const routeNameByKey = {
+    home: t('nav.home'),
+    shop: t('nav.shop'),
+    categories: t('nav.categories'),
+    cart: t('nav.cart'),
+    books: t('nav.books'),
+    profile: t('nav.profile')
+  };
 
   const iconByRoute = {
-    الرئيسية: 'home',
-    المتجر: 'storefront',
-    التصنيفات: 'grid',
-    السلة: 'cart',
-    'الحيوانات واللقاحات': 'medkit',
-    حسابي: 'person-circle'
+    [routeNameByKey.home]: 'home',
+    [routeNameByKey.shop]: 'storefront',
+    [routeNameByKey.categories]: 'grid',
+    [routeNameByKey.cart]: 'cart',
+    [routeNameByKey.books]: 'medkit',
+    [routeNameByKey.profile]: 'person-circle'
+  };
+
+  const navTheme = {
+    ...DefaultTheme,
+    colors: {
+      ...DefaultTheme.colors,
+      background: colors.background,
+      primary: colors.secondary,
+      card: '#ffffff',
+      border: colors.border,
+      text: colors.text
+    }
   };
 
   return (
     <NavigationContainer theme={navTheme}>
+      <ToastBanner visible={Boolean(toast)} message={toast ? t(toast.messageKey) : ''} />
       <Tab.Navigator
-        initialRouteName="الرئيسية"
+        initialRouteName={routeNameByKey.home}
         screenOptions={({ route }) => ({
           headerShown: false,
           tabBarActiveTintColor: colors.secondary,
-          tabBarInactiveTintColor: '#7e87a0',
+          tabBarInactiveTintColor: colors.tabInactive,
+          tabBarLabelStyle: {
+            fontSize: 11,
+            fontWeight: '800'
+          },
+          tabBarItemStyle: {
+            direction: isRTL ? 'rtl' : 'ltr',
+            paddingTop: 4
+          },
+          tabBarStyle: {
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: 88 + insets.bottom,
+            paddingBottom: Math.max(insets.bottom, 14),
+            paddingTop: 12,
+            borderTopWidth: 0,
+            backgroundColor: '#fff',
+            borderTopLeftRadius: radius.xl,
+            borderTopRightRadius: radius.xl,
+            shadowColor: '#173436',
+            shadowOpacity: 0.16,
+            shadowRadius: 22,
+            shadowOffset: { width: 0, height: 12 },
+            elevation: 18,
+            ...shadows.card
+          },
+          tabBarLabelPosition: 'below-icon',
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons
               name={focused ? iconByRoute[route.name] : `${iconByRoute[route.name]}-outline`}
-              size={size}
+              size={focused ? size + 2 : size}
               color={color}
             />
-          ),
-          tabBarStyle: {
-            height: 68 + insets.bottom,
-            paddingBottom: Math.max(insets.bottom, 10),
-            paddingTop: 8,
-            borderTopWidth: 1,
-            borderTopColor: colors.border,
-            backgroundColor: '#fff'
-          },
-          tabBarLabelStyle: {
-            fontSize: 12,
-            fontWeight: '800'
-          }
+          )
         })}
       >
-        <Tab.Screen name="الرئيسية" component={HomeScreen} />
-        <Tab.Screen name="المتجر" component={ShopScreen} />
-        <Tab.Screen name="التصنيفات" component={CategoriesScreen} />
-        <Tab.Screen name="السلة" component={CartScreen} />
-        <Tab.Screen name="الحيوانات واللقاحات" component={PetsVaccinesScreen} />
-        <Tab.Screen name="حسابي" component={ProfileScreen} />
+        <Tab.Screen name={routeNameByKey.home} component={HomeScreen} />
+        <Tab.Screen name={routeNameByKey.shop} component={ShopScreen} />
+        <Tab.Screen name={routeNameByKey.categories} component={CategoriesScreen} />
+        <Tab.Screen
+          name={routeNameByKey.cart}
+          component={CartScreen}
+          options={{
+            tabBarBadge: cartCount ? cartCount : undefined,
+            tabBarBadgeStyle: {
+              backgroundColor: colors.accent,
+              color: colors.secondary,
+              fontWeight: '900',
+              top: 4
+            }
+          }}
+        />
+        <Tab.Screen name={routeNameByKey.books} component={PetsVaccinesScreen} />
+        <Tab.Screen name={routeNameByKey.profile} component={ProfileScreen} />
       </Tab.Navigator>
     </NavigationContainer>
   );
@@ -85,23 +123,25 @@ function AppTabs() {
 
 export default function App() {
   return (
-    <AppProvider>
-      <SafeAreaProvider>
-        <View style={styles.root}>
-          <StatusBar
-            barStyle={Platform.OS === 'ios' ? 'dark-content' : 'default'}
-            backgroundColor={colors.primary}
-          />
-          <AppTabs />
-        </View>
-      </SafeAreaProvider>
-    </AppProvider>
+    <LocalizationProvider>
+      <AppProvider>
+        <SafeAreaProvider>
+          <View style={styles.root}>
+            <StatusBar
+              barStyle={Platform.OS === 'ios' ? 'dark-content' : 'default'}
+              backgroundColor={colors.background}
+            />
+            <AppTabs />
+          </View>
+        </SafeAreaProvider>
+      </AppProvider>
+    </LocalizationProvider>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.bg
+    backgroundColor: colors.background
   }
 });
