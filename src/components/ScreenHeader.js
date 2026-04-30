@@ -17,7 +17,7 @@ export default function ScreenHeader({ title, subtitle, showLanguage = true }) {
   const { isRTL, language, setLanguage, t } = useLocalization();
 
   return (
-    <View style={[styles.wrap, { paddingTop: Platform.OS === 'android' ? Math.max(insets.top, spacing.md) : spacing.sm }]}>
+    <View style={[styles.wrap, { paddingTop: Platform.OS === 'android' ? Math.max(insets.top, spacing.sm) : spacing.xs }]}>
       <View style={[styles.topRow, { flexDirection: getRowDirection(isRTL) }]}>
         <BrandLogo compact />
         <View style={[styles.actionsRow, { flexDirection: getRowDirection(isRTL) }]}>
@@ -53,12 +53,12 @@ export default function ScreenHeader({ title, subtitle, showLanguage = true }) {
 
 const styles = StyleSheet.create({
   wrap: {
-    marginBottom: spacing.lg
+    marginBottom: spacing.md
   },
   topRow: {
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.lg
+    marginBottom: spacing.sm
   },
   actionsRow: {
     alignItems: 'center',
@@ -72,9 +72,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.pill,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-    minWidth: 124,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 9,
+    minWidth: 108,
     justifyContent: 'center'
   },
   languageText: {
@@ -83,9 +83,9 @@ const styles = StyleSheet.create({
     fontWeight: '800'
   },
   notificationButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: colors.border,
@@ -110,13 +110,13 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.secondary,
-    fontSize: typography.hero,
+    fontSize: typography.h1,
     fontWeight: '900'
   },
   subtitle: {
     color: colors.textSoft,
-    fontSize: typography.body,
-    marginTop: 8,
-    lineHeight: 24
+    fontSize: typography.bodySm,
+    marginTop: 4,
+    lineHeight: 20
   }
 });

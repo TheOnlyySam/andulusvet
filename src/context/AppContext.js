@@ -4,7 +4,13 @@ import { getAuthBootstrap, signInWithRole, signOutUser, signUpWithRole } from '.
 import { fetchProfile, upsertProfile } from '../services/profileService';
 import { fetchProductsFromRepository, createProductInRepository } from '../services/catalogRepository';
 import { fetchDiscountRulesFromRepository, createDiscountRuleInRepository } from '../services/discountRepository';
-import { fetchVaccineBooks, createVaccineBookRecord, updateVaccineBookSchedule } from '../services/bookingRepository';
+import {
+  fetchVaccineBooks,
+  createVaccineBookRecord,
+  updateVaccineBookApproval,
+  updateVaccineBookPayment,
+  updateVaccineBookSchedule
+} from '../services/bookingRepository';
 import { createNotification, fetchNotifications, markNotificationsRead } from '../services/notificationService';
 import { calculateDiscounts } from '../services/discountService';
 
@@ -17,9 +23,20 @@ Notifications.setNotificationHandler({
 });
 
 export const AppContext = createContext(null);
+const BOOTSTRAP_TIMEOUT_MS = 12000;
+const VACCINE_BOOK_PRICE_IQD = 5000;
 
 function uid(prefix = 'id') {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function withTimeout(promise, timeoutMs) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Bootstrap timed out.')), timeoutMs);
+    })
+  ]);
 }
 
 export function AppProvider({ children }) {
@@ -57,12 +74,22 @@ export function AppProvider({ children }) {
   const refreshCatalog = useCallback(async () => {
     setIsCatalogLoading(true);
     try {
-      const [nextProducts, nextDiscounts] = await Promise.all([
+      const [productsResult, discountsResult] = await Promise.allSettled([
         fetchProductsFromRepository(),
         fetchDiscountRulesFromRepository()
       ]);
-      setProducts(nextProducts);
-      setDiscountRules(nextDiscounts);
+
+      if (productsResult.status === 'fulfilled') {
+        setProducts(productsResult.value);
+      } else {
+        console.log('Unable to refresh products', productsResult.reason);
+      }
+
+      if (discountsResult.status === 'fulfilled') {
+        setDiscountRules(discountsResult.value);
+      } else {
+        console.log('Unable to refresh discount rules', discountsResult.reason);
+      }
     } finally {
       setIsCatalogLoading(false);
     }
@@ -120,9 +147,14 @@ export function AppProvider({ children }) {
 
   const bootstrap = useCallback(async () => {
     try {
-      const authState = await getAuthBootstrap();
-      await hydrateUserState(authState.user);
-      await refreshCatalog();
+      try {
+        const authState = await withTimeout(getAuthBootstrap(), BOOTSTRAP_TIMEOUT_MS);
+        await withTimeout(hydrateUserState(authState.user), BOOTSTRAP_TIMEOUT_MS);
+      } catch (error) {
+        console.log('Unable to bootstrap auth state', error);
+      }
+
+      await withTimeout(refreshCatalog(), BOOTSTRAP_TIMEOUT_MS);
     } catch (error) {
       console.log('Unable to bootstrap app state', error);
     } finally {
@@ -250,6 +282,12 @@ export function AppProvider({ children }) {
         owner_email: ownerEmail || '',
         vet_name: vetName,
         protocol,
+        approval_status: currentProfile?.role === 'admin' ? 'approved' : 'pending',
+        approved_at: currentProfile?.role === 'admin' ? new Date().toISOString() : null,
+        payment_status: currentProfile?.role === 'admin' ? 'paid' : 'unpaid',
+        payment_amount_iqd: VACCINE_BOOK_PRICE_IQD,
+        book_count: 1,
+        paid_at: currentProfile?.role === 'admin' ? new Date().toISOString() : null,
         notes: notes || '',
         attachment: attachment || null,
         image: image || null,
@@ -268,6 +306,17 @@ export function AppProvider({ children }) {
           is_read: false,
           user_id: currentUser.id
         });
+      } else {
+        await createNotification({
+          title: { ar: 'طلب دفتر لقاح جديد', en: 'New digital vaccine book request' },
+          message: {
+            ar: `${clientName} - ${petName} بانتظار دفع ٥,٠٠٠ د.ع`,
+            en: `${clientName} - ${petName} is awaiting IQD 5,000 payment`
+          },
+          audience: 'all',
+          type: 'booking',
+          is_read: false
+        });
       }
       await refreshVaccineBooks(currentUser.id, currentProfile?.role || 'customer');
       await refreshNotifications(currentUser.id, currentProfile?.role || 'customer');
@@ -280,6 +329,34 @@ export function AppProvider({ children }) {
   const updateVaccineBookRecords = async ({ bookId, records }) => {
     try {
       await updateVaccineBookSchedule({ bookId, records });
+      await refreshVaccineBooks(currentUser?.id, currentProfile?.role || 'customer');
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, message: error.message };
+    }
+  };
+
+  const approveVaccineBook = async (bookId) => {
+    if (!isAdmin) {
+      return { ok: false, message: 'Admin access is required.' };
+    }
+
+    try {
+      await updateVaccineBookApproval({ bookId, approvalStatus: 'approved' });
+      await refreshVaccineBooks(currentUser?.id, currentProfile?.role || 'customer');
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, message: error.message };
+    }
+  };
+
+  const markVaccineBookPaid = async (bookId) => {
+    if (!isAdmin) {
+      return { ok: false, message: 'Admin access is required.' };
+    }
+
+    try {
+      await updateVaccineBookPayment({ bookId, paymentStatus: 'paid' });
       await refreshVaccineBooks(currentUser?.id, currentProfile?.role || 'customer');
       return { ok: true };
     } catch (error) {
@@ -445,6 +522,9 @@ export function AppProvider({ children }) {
     refreshVaccineBooks,
     createVaccineBook,
     updateVaccineBookRecords,
+    approveVaccineBook,
+    markVaccineBookPaid,
+    VACCINE_BOOK_PRICE_IQD,
     createAdminProduct,
     createAdminDiscount,
     markAllNotificationsAsRead,

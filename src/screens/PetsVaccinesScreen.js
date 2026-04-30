@@ -1,4 +1,5 @@
-import React, { useContext, useMemo, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useContext, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Image,
@@ -21,7 +22,7 @@ import { AppContext } from '../context/AppContext';
 import { useLocalization } from '../context/LocalizationContext';
 import { getAttachmentLabel } from '../services/bookingService';
 import { colors, radius, shadows, spacing, typography } from '../theme';
-import { formatDate, getRowDirection, getTextAlign } from '../utils/format';
+import { formatCurrency, formatDate, getRowDirection, getTextAlign } from '../utils/format';
 
 function addMonths(baseDate, months) {
   const date = new Date(baseDate);
@@ -29,17 +30,52 @@ function addMonths(baseDate, months) {
   return date;
 }
 
+function addDays(baseDate, days) {
+  const date = new Date(baseDate);
+  date.setDate(date.getDate() + days);
+  return date;
+}
+
+const CREATE_BOOK_DRAFT_KEY = 'andulusvet_create_book_draft_v1';
+
 const PROTOCOLS = [
   {
     id: 'cat_pch_korea',
     petType: 'cat',
-    label: { ar: 'قطط - PCH (كوريا)', en: 'Cats - PCH (Korea)' },
+    label: { ar: 'قطط - PCH (كوري)', en: 'Cats - PCH (Korean)' },
     steps: [
       { vaccineName: 'PCH', relation: { type: 'reference', months: 0 }, hint: { ar: 'الجرعة الأولى بتاريخ اول مراجعة', en: 'First dose on the first visit date' } },
+      { vaccineName: 'Worms', relation: { type: 'prev', days: 3 }, hint: { ar: 'بعد 2-3 أيام من الجرعة الاعتيادية', en: '2-3 days after the normal vaccine' } },
       { vaccineName: 'PCH', relation: { type: 'prev', months: 1 }, hint: { ar: 'بعد شهر', en: 'After 1 month' } },
       { vaccineName: 'Rabies', relation: { type: 'prev', months: 1 }, hint: { ar: 'بعد شهر', en: 'After 1 month' } },
       { vaccineName: 'PCH Booster', relation: { type: 'index', index: 1, months: 6 }, hint: { ar: 'بعد 6 أشهر من جرعة PCH السابقة', en: '6 months after the previous PCH dose' } },
-      { vaccineName: 'PCH', relation: { type: 'prev', months: 12 }, hint: { ar: 'بعد سنة', en: 'After 1 year' } }
+      {
+        vaccineName: 'PCH',
+        relation: { type: 'prev', months: 12 },
+        hint: { ar: 'بعد سنة', en: 'After 1 year' },
+        repeatEveryMonths: 12,
+        repeatCount: 3,
+        repeatHint: { ar: 'متابعة سنوية', en: 'Annual follow-up dose' }
+      }
+    ]
+  },
+  {
+    id: 'cat_pch_netherlands',
+    petType: 'cat',
+    label: { ar: 'قطط - PCH (هولندا)', en: 'Cats - PCH (Netherlands)' },
+    steps: [
+      { vaccineName: 'PCH', relation: { type: 'reference', months: 0 }, hint: { ar: 'الجرعة الأولى بتاريخ اول مراجعة', en: 'First dose on the first visit date' } },
+      { vaccineName: 'Worms', relation: { type: 'prev', days: 3 }, hint: { ar: 'بعد 2-3 أيام من الجرعة الاعتيادية', en: '2-3 days after the normal vaccine' } },
+      { vaccineName: 'PCH', relation: { type: 'prev', months: 1 }, hint: { ar: 'بعد شهر', en: 'After 1 month' } },
+      { vaccineName: 'Rabies', relation: { type: 'prev', months: 1 }, hint: { ar: 'بعد شهر', en: 'After 1 month' } },
+      {
+        vaccineName: 'PCH + Rabies',
+        relation: { type: 'prev', months: 12 },
+        hint: { ar: 'جرعة سنوية', en: 'Annual dose' },
+        repeatEveryMonths: 12,
+        repeatCount: 3,
+        repeatHint: { ar: 'متابعة سنوية', en: 'Annual follow-up dose' }
+      }
     ]
   },
   {
@@ -48,8 +84,16 @@ const PROTOCOLS = [
     label: { ar: 'قطط - PCHR (التشيك)', en: 'Cats - PCHR (Czech)' },
     steps: [
       { vaccineName: 'PCHR', relation: { type: 'reference', months: 0 }, hint: { ar: 'الجرعة الأولى بتاريخ اول مراجعة', en: 'First dose on the first visit date' } },
+      { vaccineName: 'Worms', relation: { type: 'prev', days: 3 }, hint: { ar: 'بعد 2-3 أيام من الجرعة الاعتيادية', en: '2-3 days after the normal vaccine' } },
       { vaccineName: 'PCHR', relation: { type: 'prev', months: 1 }, hint: { ar: 'بعد شهر', en: 'After 1 month' } },
-      { vaccineName: 'PCHR', relation: { type: 'prev', months: 12 }, hint: { ar: 'بعد سنة', en: 'After 1 year' } }
+      {
+        vaccineName: 'PCHR',
+        relation: { type: 'prev', months: 12 },
+        hint: { ar: 'بعد سنة', en: 'After 1 year' },
+        repeatEveryMonths: 12,
+        repeatCount: 3,
+        repeatHint: { ar: 'متابعة سنوية', en: 'Annual follow-up dose' }
+      }
     ]
   },
   {
@@ -58,20 +102,52 @@ const PROTOCOLS = [
     label: { ar: 'كلاب - DHPPi + Lepto', en: 'Dogs - DHPPi + Lepto' },
     steps: [
       { vaccineName: 'DHPPi + Lepto', relation: { type: 'reference', months: 0 }, hint: { ar: 'الجرعة الأولى بتاريخ اول مراجعة', en: 'First dose on the first visit date' } },
+      { vaccineName: 'Worms', relation: { type: 'prev', days: 3 }, hint: { ar: 'بعد 2-3 أيام من الجرعة الاعتيادية', en: '2-3 days after the normal vaccine' } },
       { vaccineName: 'DHPPi', relation: { type: 'prev', months: 1 }, hint: { ar: 'بعد شهر', en: 'After 1 month' } },
       { vaccineName: 'Rabies', relation: { type: 'prev', months: 1 }, hint: { ar: 'بعد شهر', en: 'After 1 month' } },
       { vaccineName: 'DHPPi + Lepto', relation: { type: 'prev', months: 6 }, hint: { ar: 'بعد 6 أشهر', en: 'After 6 months' } },
-      { vaccineName: 'DHPPi + Lepto + Rabies', relation: { type: 'prev', months: 12 }, hint: { ar: 'جرعة سنوية', en: 'Annual dose' } }
+      {
+        vaccineName: 'DHPPi + Lepto + Rabies',
+        relation: { type: 'prev', months: 12 },
+        hint: { ar: 'جرعة سنوية', en: 'Annual dose' },
+        repeatEveryMonths: 12,
+        repeatCount: 3,
+        repeatHint: { ar: 'متابعة سنوية', en: 'Annual follow-up dose' }
+      }
     ]
   }
 ];
 
+function expandSteps(protocol) {
+  if (!protocol) return [];
+  const expanded = [];
+
+  protocol.steps.forEach((step) => {
+    expanded.push(step);
+
+    const repeatEveryMonths = Number(step.repeatEveryMonths || 0);
+    const repeatCount = Number(step.repeatCount || 0);
+    if (!repeatEveryMonths || !repeatCount) return;
+
+    for (let repeatIndex = 0; repeatIndex < repeatCount; repeatIndex += 1) {
+      expanded.push({
+        ...step,
+        relation: { type: 'prev', months: repeatEveryMonths },
+        hint: step.repeatHint || step.hint
+      });
+    }
+  });
+
+  return expanded;
+}
+
 function buildSchedule(protocol, referenceDate, receivedByIndex) {
   if (!protocol) return [];
+  const steps = expandSteps(protocol);
   const rows = [];
 
-  for (let index = 0; index < protocol.steps.length; index += 1) {
-    const step = protocol.steps[index];
+  for (let index = 0; index < steps.length; index += 1) {
+    const step = steps[index];
     let baseDate = new Date(referenceDate);
 
     if (step.relation.type === 'prev' && index > 0) {
@@ -82,7 +158,13 @@ function buildSchedule(protocol, referenceDate, receivedByIndex) {
       baseDate = rows[step.relation.index]?.effectiveDate || new Date(referenceDate);
     }
 
-    const plannedDate = addMonths(baseDate, step.relation.months);
+    let plannedDate = new Date(baseDate);
+    if (step.relation.months) {
+      plannedDate = addMonths(plannedDate, step.relation.months);
+    }
+    if (step.relation.days) {
+      plannedDate = addDays(plannedDate, step.relation.days);
+    }
     const receivedDate = receivedByIndex[index] || null;
     rows.push({
       index,
@@ -105,7 +187,8 @@ export default function PetsVaccinesScreen() {
     currentProfile,
     vaccineBooksForUser,
     createVaccineBook,
-    updateVaccineBookRecords
+    updateVaccineBookRecords,
+    VACCINE_BOOK_PRICE_IQD
   } = useContext(AppContext);
 
   const [view, setView] = useState('list');
@@ -131,6 +214,7 @@ export default function PetsVaccinesScreen() {
   const [activeDoseIndex, setActiveDoseIndex] = useState(null);
   const [detailReceivedByIndex, setDetailReceivedByIndex] = useState({});
   const [detailActiveDoseIndex, setDetailActiveDoseIndex] = useState(null);
+  const [isDraftHydrated, setIsDraftHydrated] = useState(false);
 
   const selectedProtocol = useMemo(
     () => PROTOCOLS.find((item) => item.id === protocolId) || PROTOCOLS[0],
@@ -157,6 +241,76 @@ export default function PetsVaccinesScreen() {
     const baseDate = selectedBook.firstVisitDateIso ? new Date(selectedBook.firstVisitDateIso) : new Date();
     return buildSchedule(selectedBookProtocol, baseDate, detailReceivedByIndex);
   }, [detailReceivedByIndex, selectedBook, selectedBookProtocol]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadDraft = async () => {
+      try {
+        const raw = await AsyncStorage.getItem(CREATE_BOOK_DRAFT_KEY);
+        if (!raw || !mounted) return;
+        const draft = JSON.parse(raw);
+        setClientName(draft.clientName || '');
+        setLocation(draft.location || '');
+        setPetName(draft.petName || '');
+        setVetName(draft.vetName || '');
+        setOwnerPhone(draft.ownerPhone || '');
+        setOwnerEmail(draft.ownerEmail || '');
+        setBookNotes(draft.bookNotes || '');
+        setBookAttachment(draft.bookAttachment || null);
+        setBookImage(draft.bookImage || null);
+        setProtocolId(draft.protocolId || PROTOCOLS[0].id);
+        setReceivedByIndex(draft.receivedByIndex || {});
+        if (draft.firstVisitDate) setFirstVisitDate(new Date(draft.firstVisitDate));
+        if (draft.petBirthDate) setPetBirthDate(new Date(draft.petBirthDate));
+      } finally {
+        if (mounted) setIsDraftHydrated(true);
+      }
+    };
+
+    loadDraft();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isDraftHydrated || view !== 'create') return;
+
+    const draft = {
+      clientName,
+      location,
+      petName,
+      vetName,
+      ownerPhone,
+      ownerEmail,
+      bookNotes,
+      bookAttachment,
+      bookImage,
+      firstVisitDate: firstVisitDate.toISOString(),
+      petBirthDate: petBirthDate.toISOString(),
+      protocolId,
+      receivedByIndex
+    };
+
+    AsyncStorage.setItem(CREATE_BOOK_DRAFT_KEY, JSON.stringify(draft)).catch(() => null);
+  }, [
+    isDraftHydrated,
+    view,
+    clientName,
+    location,
+    petName,
+    vetName,
+    ownerPhone,
+    ownerEmail,
+    bookNotes,
+    bookAttachment,
+    bookImage,
+    firstVisitDate,
+    petBirthDate,
+    protocolId,
+    receivedByIndex
+  ]);
 
   const startCreate = () => {
     setView('create');
@@ -199,6 +353,7 @@ export default function PetsVaccinesScreen() {
     setShowProtocolMenu(false);
     setReceivedByIndex({});
     setActiveDoseIndex(null);
+    AsyncStorage.removeItem(CREATE_BOOK_DRAFT_KEY).catch(() => null);
   };
 
   const saveBook = async () => {
@@ -247,13 +402,21 @@ export default function PetsVaccinesScreen() {
       return;
     }
 
-    Alert.alert(t('alerts.success'), t('alerts.savedBook'));
+    const nextStatus = result.book?.approvalStatus || result.book?.approval_status || 'approved';
+    Alert.alert(
+      t('alerts.success'),
+      nextStatus === 'pending' ? t('alerts.savedBookPaymentPending') : t('alerts.savedBook')
+    );
     resetCreateForm();
     openBookDetails(result.book.id);
   };
 
   const saveDetailDates = async () => {
     if (!selectedBook || !selectedBookProtocol) return;
+    if ((selectedBook.paymentStatus || selectedBook.payment_status) !== 'paid') {
+      Alert.alert(t('alerts.warning'), t('books.paymentRequired'));
+      return;
+    }
 
     const existingRecordsByDate = [...(selectedBook.records || [])].sort(
       (a, b) => new Date(a.plannedDateIso || a.dateIso).getTime() - new Date(b.plannedDateIso || b.dateIso).getTime()
@@ -420,6 +583,8 @@ export default function PetsVaccinesScreen() {
   );
 
   if (view === 'detail' && selectedBook) {
+    const selectedBookIsPaid = (selectedBook.paymentStatus || selectedBook.payment_status) === 'paid';
+
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <ScreenHeader title={t('books.detailTitle')} subtitle={selectedBook.clientName} />
@@ -436,67 +601,84 @@ export default function PetsVaccinesScreen() {
             <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>{t('books.vetName')}: {selectedBook.vetName}</Text>
             <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>{t('books.ownerPhone')}: {selectedBook.ownerPhone || '-'}</Text>
             <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>{t('books.ownerEmail')}: {selectedBook.ownerEmail || '-'}</Text>
+            <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>
+              {t('books.requestStatus')}: {(selectedBook.approvalStatus || selectedBook.approval_status) === 'pending' ? t('books.statusPending') : t('books.statusApproved')}
+            </Text>
+            <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>
+              {t('books.paymentStatus')}: {(selectedBook.paymentStatus || selectedBook.payment_status) === 'paid' ? t('books.statusPaid') : t('books.statusUnpaid')}
+            </Text>
+            <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>
+              {t('books.bookFee')}: {formatCurrency(selectedBook.paymentAmountIqd || selectedBook.payment_amount_iqd || VACCINE_BOOK_PRICE_IQD, language)}
+            </Text>
             <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>{t('books.petBirthDate')}: {selectedBook.petBirthDateIso ? formatDate(selectedBook.petBirthDateIso, language) : '-'}</Text>
             <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>{t('books.firstVisitDate')}: {selectedBook.firstVisitDateIso ? formatDate(selectedBook.firstVisitDateIso, language) : '-'}</Text>
             <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>{t('common.files')}: {getAttachmentLabel(selectedBook.attachment)}</Text>
             <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>{t('books.notes')}: {selectedBook.notes || '-'}</Text>
             {selectedBook.image?.uri ? <Image source={{ uri: selectedBook.image.uri }} style={styles.bookImage} /> : null}
-            <TouchableOpacity style={styles.exportBtn} onPress={exportBookPdf}>
-              <Text style={styles.exportTxt}>{t('books.exportPdf')}</Text>
-            </TouchableOpacity>
+            {selectedBookIsPaid ? (
+              <TouchableOpacity style={styles.exportBtn} onPress={exportBookPdf}>
+                <Text style={styles.exportTxt}>{t('books.exportPdf')}</Text>
+              </TouchableOpacity>
+            ) : (
+              <Text style={[styles.paymentLockText, { textAlign: getTextAlign(isRTL) }]}>
+                {t('books.paymentRequired')}
+              </Text>
+            )}
           </View>
 
-          <View style={styles.card}>
-            <Text style={[styles.sectionTitle, { textAlign: getTextAlign(isRTL) }]}>{t('books.scheduleSection')}</Text>
-            {detailScheduleRows.map((dose, index) => (
-              <View key={`${dose.vaccineName}_${index}`} style={styles.doseCard}>
-                <Text style={[styles.doseTitle, { textAlign: getTextAlign(isRTL) }]}>
-                  {t('books.dose')} {index + 1}: {dose.vaccineName}
-                </Text>
-                <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>
-                  {t('books.plannedDate')}: {formatDate(dose.plannedDate, language)}
-                </Text>
-                <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>
-                  {t('books.actualDate')}: {dose.receivedDate ? formatDate(dose.receivedDate, language) : '-'}
-                </Text>
-                <View style={[styles.inlineRow, { flexDirection: getRowDirection(isRTL) }]}>
-                  <TouchableOpacity style={styles.smallBtn} onPress={() => setDetailActiveDoseIndex(index)}>
-                    <Text style={styles.smallBtnTxt}>
-                      {dose.receivedDate ? `${t('books.actualDate')}: ${formatDate(dose.receivedDate, language)}` : t('books.enterActualDate')}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.smallBtn, styles.clearBtn]}
-                    onPress={() =>
-                      setDetailReceivedByIndex((prev) => {
-                        const next = { ...prev };
-                        delete next[index];
-                        return next;
-                      })
-                    }
-                  >
-                    <Text style={styles.smallBtnTxt}>{t('common.clear')}</Text>
-                  </TouchableOpacity>
+          {selectedBookIsPaid ? (
+            <View style={styles.card}>
+              <Text style={[styles.sectionTitle, { textAlign: getTextAlign(isRTL) }]}>{t('books.scheduleSection')}</Text>
+              {detailScheduleRows.map((dose, index) => (
+                <View key={`${dose.vaccineName}_${index}`} style={styles.doseCard}>
+                  <Text style={[styles.doseTitle, { textAlign: getTextAlign(isRTL) }]}>
+                    {t('books.dose')} {index + 1}: {dose.vaccineName}
+                  </Text>
+                  <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>
+                    {t('books.plannedDate')}: {formatDate(dose.plannedDate, language)}
+                  </Text>
+                  <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>
+                    {t('books.actualDate')}: {dose.receivedDate ? formatDate(dose.receivedDate, language) : '-'}
+                  </Text>
+                  <View style={[styles.inlineRow, { flexDirection: getRowDirection(isRTL) }]}>
+                    <TouchableOpacity style={styles.smallBtn} onPress={() => setDetailActiveDoseIndex(index)}>
+                      <Text style={styles.smallBtnTxt}>
+                        {dose.receivedDate ? `${t('books.actualDate')}: ${formatDate(dose.receivedDate, language)}` : t('books.enterActualDate')}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.smallBtn, styles.clearBtn]}
+                      onPress={() =>
+                        setDetailReceivedByIndex((prev) => {
+                          const next = { ...prev };
+                          delete next[index];
+                          return next;
+                        })
+                      }
+                    >
+                      <Text style={styles.smallBtnTxt}>{t('common.clear')}</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
-            ))}
+              ))}
 
-            {detailActiveDoseIndex !== null
-              ? renderDatePicker(
-                  detailReceivedByIndex[detailActiveDoseIndex] || new Date(),
-                  (selectedDate) =>
-                    setDetailReceivedByIndex((prev) => ({
-                      ...prev,
-                      [detailActiveDoseIndex]: selectedDate
-                    })),
-                  () => setDetailActiveDoseIndex(null)
-                )
-              : null}
+              {detailActiveDoseIndex !== null
+                ? renderDatePicker(
+                    detailReceivedByIndex[detailActiveDoseIndex] || new Date(),
+                    (selectedDate) =>
+                      setDetailReceivedByIndex((prev) => ({
+                        ...prev,
+                        [detailActiveDoseIndex]: selectedDate
+                      })),
+                    () => setDetailActiveDoseIndex(null)
+                  )
+                : null}
 
-            <TouchableOpacity style={styles.saveBtn} onPress={saveDetailDates}>
-              <Text style={styles.saveTxt}>{t('books.saveChanges')}</Text>
-            </TouchableOpacity>
-          </View>
+              <TouchableOpacity style={styles.saveBtn} onPress={saveDetailDates}>
+                <Text style={styles.saveTxt}>{t('books.saveChanges')}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
         </ScrollView>
       </SafeAreaView>
     );
@@ -513,6 +695,14 @@ export default function PetsVaccinesScreen() {
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.card}>
             <Text style={[styles.sectionTitle, { textAlign: getTextAlign(isRTL) }]}>{t('books.ownerPetSection')}</Text>
+            {currentProfile?.role !== 'admin' ? (
+              <View style={styles.priceNotice}>
+                <Text style={[styles.priceNoticeTitle, { textAlign: getTextAlign(isRTL) }]}>{t('books.bookFeeTitle')}</Text>
+                <Text style={[styles.priceNoticeText, { textAlign: getTextAlign(isRTL) }]}>
+                  {t('books.bookFeeNotice')}
+                </Text>
+              </View>
+            ) : null}
             <Text style={[styles.helper, { textAlign: getTextAlign(isRTL) }]}>
               {t('books.helperLoggedIn')}: {currentProfile?.display_name || currentProfile?.username || currentUser?.email || t('books.currentUserMissing')}
             </Text>
@@ -530,12 +720,12 @@ export default function PetsVaccinesScreen() {
             </View>
             {bookImage?.uri ? <Image source={{ uri: bookImage.uri }} style={styles.bookImage} /> : null}
 
-            <FormField label={t('books.clientName')} value={clientName} onChangeText={setClientName} placeholder={language === 'ar' ? 'اسم العميل الكامل' : 'Client full name'} />
-            <FormField label={t('books.location')} value={location} onChangeText={setLocation} placeholder={language === 'ar' ? 'المدينة أو العنوان المختصر' : 'City or short address'} />
-            <FormField label={t('books.petName')} value={petName} onChangeText={setPetName} placeholder={language === 'ar' ? 'مثال: لولو' : 'Example: Lulu'} />
-            <FormField label={t('books.vetName')} value={vetName} onChangeText={setVetName} placeholder={language === 'ar' ? 'مثال: د. أحمد' : 'Example: Dr. Ahmed'} />
-            <FormField label={t('books.ownerPhone')} value={ownerPhone} onChangeText={setOwnerPhone} placeholder="07xx xxx xxxx" keyboardType="phone-pad" />
-            <FormField label={t('books.ownerEmail')} value={ownerEmail} onChangeText={setOwnerEmail} placeholder="owner@email.com" autoCapitalize="none" keyboardType="email-address" />
+            <FormField label={t('books.clientName')} value={clientName} onChangeText={setClientName} placeholder={language === 'ar' ? 'اسم العميل الكامل' : 'Client full name'} autoComplete="off" textContentType="none" importantForAutofill="no" />
+            <FormField label={t('books.location')} value={location} onChangeText={setLocation} placeholder={language === 'ar' ? 'المدينة أو العنوان المختصر' : 'City or short address'} autoComplete="off" textContentType="none" importantForAutofill="no" />
+            <FormField label={t('books.petName')} value={petName} onChangeText={setPetName} placeholder={language === 'ar' ? 'مثال: لولو' : 'Example: Lulu'} autoComplete="off" textContentType="none" importantForAutofill="no" />
+            <FormField label={t('books.vetName')} value={vetName} onChangeText={setVetName} placeholder={language === 'ar' ? 'مثال: د. أحمد' : 'Example: Dr. Ahmed'} autoComplete="off" textContentType="none" importantForAutofill="no" />
+            <FormField label={t('books.ownerPhone')} value={ownerPhone} onChangeText={setOwnerPhone} placeholder="07xx xxx xxxx" keyboardType="phone-pad" autoComplete="tel" textContentType="telephoneNumber" />
+            <FormField label={t('books.ownerEmail')} value={ownerEmail} onChangeText={setOwnerEmail} placeholder="owner@email.com" autoCapitalize="none" keyboardType="email-address" autoComplete="email" textContentType="emailAddress" />
 
             <Text style={[styles.label, { textAlign: getTextAlign(isRTL) }]}>{t('books.petBirthDate')}</Text>
             <TouchableOpacity style={styles.dateBtn} onPress={() => setShowBirthPicker(true)}>
@@ -666,7 +856,9 @@ export default function PetsVaccinesScreen() {
         ) : null}
 
         <TouchableOpacity style={styles.saveBtn} onPress={startCreate}>
-          <Text style={styles.saveTxt}>{t('books.create')}</Text>
+          <Text style={styles.saveTxt}>
+            {currentProfile?.role === 'admin' ? t('books.create') : t('books.createRequest')}
+          </Text>
         </TouchableOpacity>
 
         <View style={styles.card}>
@@ -678,6 +870,15 @@ export default function PetsVaccinesScreen() {
               <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>{t('books.petName')}: {book.petName}</Text>
               <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>{t('books.vetName')}: {book.vetName}</Text>
               <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>{t('books.location')}: {book.location}</Text>
+              <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>
+                {t('books.requestStatus')}: {(book.approvalStatus || book.approval_status) === 'pending' ? t('books.statusPending') : t('books.statusApproved')}
+              </Text>
+              <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>
+                {t('books.paymentStatus')}: {(book.paymentStatus || book.payment_status) === 'paid' ? t('books.statusPaid') : t('books.statusUnpaid')}
+              </Text>
+              <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>
+                {t('books.bookFee')}: {formatCurrency(book.paymentAmountIqd || book.payment_amount_iqd || VACCINE_BOOK_PRICE_IQD, language)}
+              </Text>
               <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>{t('books.firstVisitDate')}: {book.firstVisitDateIso ? formatDate(book.firstVisitDateIso, language) : '-'}</Text>
             </TouchableOpacity>
           ))}
@@ -727,6 +928,36 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     fontSize: typography.bodySm,
     lineHeight: 20
+  },
+  priceNotice: {
+    backgroundColor: colors.accentSoft,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.md
+  },
+  priceNoticeTitle: {
+    color: colors.secondary,
+    fontSize: typography.label,
+    fontWeight: '900',
+    marginBottom: 4
+  },
+  priceNoticeText: {
+    color: colors.text,
+    fontSize: typography.bodySm,
+    lineHeight: 20,
+    fontWeight: '700'
+  },
+  paymentLockText: {
+    color: colors.warning,
+    backgroundColor: colors.accentSoft,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginTop: spacing.sm,
+    fontSize: typography.bodySm,
+    lineHeight: 20,
+    fontWeight: '800'
   },
   label: {
     marginBottom: 6,

@@ -30,17 +30,10 @@ export async function fetchDiscountRulesFromRepository() {
     return [];
   }
 
-  const {
-    data: { session }
-  } = await supabase.auth.getSession();
-
-  if (!session?.user) {
-    return [];
-  }
-
   const { data, error } = await supabase
     .from('discount_rules')
     .select('*')
+    .eq('is_active', true)
     .order('created_at', { ascending: false });
 
   if (error) throw error;

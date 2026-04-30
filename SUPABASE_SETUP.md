@@ -65,6 +65,12 @@ Expo will expose these to the app because they use the `EXPO_PUBLIC_` prefix.
 - `owner_email text`
 - `vet_name text not null`
 - `protocol text not null`
+- `approval_status text not null default 'pending'` (recommended values: `pending`, `approved`)
+- `approved_at timestamptz`
+- `payment_status text not null default 'unpaid'` (recommended values: `unpaid`, `paid`)
+- `payment_amount_iqd numeric not null default 5000`
+- `book_count integer not null default 1`
+- `paid_at timestamptz`
 - `notes text`
 - `attachment jsonb`
 - `image jsonb`
@@ -128,6 +134,7 @@ Expo will expose these to the app because they use the `EXPO_PUBLIC_` prefix.
 ### `vaccine_books`
 - customers can read and insert only their own books
 - admins can read all books
+- admins can update `approval_status` and `approved_at`
 
 ### `booking_records`
 - customers can read records belonging to their own `vaccine_books`

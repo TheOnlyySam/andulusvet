@@ -51,6 +51,8 @@ export default function SignUpScreen() {
             onChangeText={setEmail}
             autoCapitalize="none"
             keyboardType="email-address"
+            autoComplete="email"
+            textContentType="emailAddress"
             placeholder="name@example.com"
           />
           <FormField
@@ -58,6 +60,8 @@ export default function SignUpScreen() {
             value={password}
             onChangeText={setPassword}
             secureTextEntry
+            autoComplete="new-password"
+            textContentType="newPassword"
             placeholder="********"
           />
           <Pressable style={styles.primaryButton} onPress={submit}>

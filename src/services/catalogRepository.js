@@ -27,9 +27,13 @@ function normalizeProduct(product) {
     isActive: typeof product.isActive === 'boolean' ? product.isActive : product.is_active !== false,
     is_active: typeof product.is_active === 'boolean' ? product.is_active : product.isActive !== false,
     price: Number(product.price || 0),
-    name: toLocalizedField(product.name, product.name_en, ''),
-    brand: toLocalizedField(product.brand, product.brand_en, ''),
-    desc: toLocalizedField(product.desc || product.description || product.description_ar, product.desc_en || product.description_en, '')
+    name: toLocalizedField(product.name || product.name_ar, product.name_en, ''),
+    brand: toLocalizedField(product.brand || product.brand_ar, product.brand_en, ''),
+    desc: toLocalizedField(
+      product.desc || product.description || product.description_ar,
+      product.desc_en || product.description_en,
+      ''
+    )
   });
 }
 
@@ -40,17 +44,10 @@ export async function fetchProductsFromRepository() {
     return [];
   }
 
-  const {
-    data: { session }
-  } = await supabase.auth.getSession();
-
-  if (!session?.user) {
-    return [];
-  }
-
   const { data, error } = await supabase
     .from('products')
     .select('*')
+    .eq('is_active', true)
     .order('created_at', { ascending: false });
 
   if (error) throw error;

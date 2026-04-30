@@ -59,33 +59,34 @@ function AppTabs() {
         initialRouteName={routeNameByKey.home}
         screenOptions={({ route }) => ({
           headerShown: false,
+          tabBarHideOnKeyboard: true,
           tabBarActiveTintColor: colors.secondary,
           tabBarInactiveTintColor: colors.tabInactive,
           tabBarLabelStyle: {
-            fontSize: 11,
+            fontSize: 10,
             fontWeight: '800'
           },
           tabBarItemStyle: {
             direction: isRTL ? 'rtl' : 'ltr',
-            paddingTop: 4
+            paddingTop: 2
           },
           tabBarStyle: {
             position: 'absolute',
             left: 0,
             right: 0,
             bottom: 0,
-            height: 88 + insets.bottom,
-            paddingBottom: Math.max(insets.bottom, 14),
-            paddingTop: 12,
+            height: 70 + insets.bottom,
+            paddingBottom: Math.max(insets.bottom, 8),
+            paddingTop: 8,
             borderTopWidth: 0,
             backgroundColor: '#fff',
-            borderTopLeftRadius: radius.xl,
-            borderTopRightRadius: radius.xl,
+            borderTopLeftRadius: radius.lg,
+            borderTopRightRadius: radius.lg,
             shadowColor: '#173436',
-            shadowOpacity: 0.16,
-            shadowRadius: 22,
-            shadowOffset: { width: 0, height: 12 },
-            elevation: 18,
+            shadowOpacity: 0.12,
+            shadowRadius: 16,
+            shadowOffset: { width: 0, height: 8 },
+            elevation: 12,
             ...shadows.card
           },
           tabBarLabelPosition: 'below-icon',

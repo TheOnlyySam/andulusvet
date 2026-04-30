@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getSupabaseClient } from '../lib/supabase';
 
 const STORAGE_KEY = 'andulusvet_vaccine_books_v6';
+const VACCINE_BOOK_PRICE_IQD = 5000;
 
 function toBookingRecordRow(record, vaccineBookId) {
   return {
@@ -30,6 +31,12 @@ function toVaccineBookRow(payload) {
     owner_email: payload.owner_email || payload.ownerEmail || '',
     vet_name: payload.vet_name || payload.vetName || '',
     protocol: payload.protocol || null,
+    approval_status: payload.approval_status || payload.approvalStatus || 'approved',
+    approved_at: payload.approved_at || payload.approvedAt || null,
+    payment_status: payload.payment_status || payload.paymentStatus || 'paid',
+    payment_amount_iqd: Number(payload.payment_amount_iqd || payload.paymentAmountIqd || 0),
+    book_count: Number(payload.book_count || payload.bookCount || 1),
+    paid_at: payload.paid_at || payload.paidAt || null,
     notes: payload.notes || '',
     attachment: payload.attachment || null,
     image: payload.image || null
@@ -49,6 +56,8 @@ function normalizeBookingRecord(record) {
 }
 
 function normalizeBook(book) {
+  const approvalStatus = book.approvalStatus || book.approval_status || 'approved';
+
   return {
     ...book,
     userId: book.userId || book.user_id,
@@ -60,6 +69,12 @@ function normalizeBook(book) {
     ownerPhone: book.ownerPhone || book.owner_phone || '',
     ownerEmail: book.ownerEmail || book.owner_email || '',
     vetName: book.vetName || book.vet_name || '',
+    approvalStatus,
+    approvedAt: book.approvedAt || book.approved_at || null,
+    paymentStatus: book.paymentStatus || book.payment_status || (approvalStatus === 'pending' ? 'unpaid' : 'paid'),
+    paymentAmountIqd: Number(book.paymentAmountIqd || book.payment_amount_iqd || VACCINE_BOOK_PRICE_IQD),
+    bookCount: Number(book.bookCount || book.book_count || 1),
+    paidAt: book.paidAt || book.paid_at || null,
     records: (book.records || book.booking_records || []).map(normalizeBookingRecord)
   };
 }
@@ -110,13 +125,35 @@ export async function createVaccineBookRecord(payload) {
   }
 
   const { records = [] } = payload;
-  const { data: book, error: bookError } = await supabase
-    .from('vaccine_books')
-    .insert(toVaccineBookRow(payload))
-    .select()
-    .single();
+  const insertBook = async (bookPayload) =>
+    supabase
+      .from('vaccine_books')
+      .insert(bookPayload)
+      .select()
+      .single();
 
-  if (bookError) throw bookError;
+  let bookResponse = await insertBook(toVaccineBookRow(payload));
+  const missingColumnMessage = String(bookResponse.error?.message || '').toLowerCase();
+  const optionalColumnMissing =
+    missingColumnMessage.includes('approval_status') ||
+    missingColumnMessage.includes('payment_status') ||
+    missingColumnMessage.includes('payment_amount_iqd') ||
+    missingColumnMessage.includes('book_count') ||
+    missingColumnMessage.includes('paid_at');
+
+  if (optionalColumnMissing) {
+    const fallbackPayload = toVaccineBookRow(payload);
+    delete fallbackPayload.approval_status;
+    delete fallbackPayload.approved_at;
+    delete fallbackPayload.payment_status;
+    delete fallbackPayload.payment_amount_iqd;
+    delete fallbackPayload.book_count;
+    delete fallbackPayload.paid_at;
+    bookResponse = await insertBook(fallbackPayload);
+  }
+
+  if (bookResponse.error) throw bookResponse.error;
+  const book = bookResponse.data;
 
   if (records.length) {
     const { error: recordsError } = await supabase
@@ -161,5 +198,93 @@ export async function updateVaccineBookSchedule({ bookId, records }) {
     if (insertError) throw insertError;
   }
 
+  return true;
+}
+
+export async function updateVaccineBookApproval({ bookId, approvalStatus }) {
+  const supabase = getSupabaseClient();
+
+  if (!supabase) {
+    const books = await getLocalBooks();
+    const next = books.map((book) =>
+      book.id === bookId
+        ? {
+            ...book,
+            approvalStatus,
+            approval_status: approvalStatus,
+            approvedAt: approvalStatus === 'approved' ? new Date().toISOString() : null,
+            approved_at: approvalStatus === 'approved' ? new Date().toISOString() : null
+          }
+        : book
+    );
+    await setLocalBooks(next);
+    return true;
+  }
+
+  const patch = {
+    approval_status: approvalStatus,
+    approved_at: approvalStatus === 'approved' ? new Date().toISOString() : null
+  };
+
+  const { error } = await supabase
+    .from('vaccine_books')
+    .update(patch)
+    .eq('id', bookId);
+
+  if (error) throw error;
+  return true;
+}
+
+export async function updateVaccineBookPayment({ bookId, paymentStatus }) {
+  const supabase = getSupabaseClient();
+  const paidAt = paymentStatus === 'paid' ? new Date().toISOString() : null;
+  const approvalStatus = paymentStatus === 'paid' ? 'approved' : 'pending';
+
+  if (!supabase) {
+    const books = await getLocalBooks();
+    const next = books.map((book) =>
+      book.id === bookId
+        ? {
+            ...book,
+            paymentStatus,
+            payment_status: paymentStatus,
+            paidAt,
+            paid_at: paidAt,
+            approvalStatus,
+            approval_status: approvalStatus,
+            approvedAt: paidAt,
+            approved_at: paidAt
+          }
+        : book
+    );
+    await setLocalBooks(next);
+    return true;
+  }
+
+  const patch = {
+    payment_status: paymentStatus,
+    paid_at: paidAt,
+    approval_status: approvalStatus,
+    approved_at: paidAt
+  };
+
+  const { error } = await supabase
+    .from('vaccine_books')
+    .update(patch)
+    .eq('id', bookId);
+
+  if (!error) return true;
+
+  const fallbackPatch = {
+    approval_status: approvalStatus,
+    approved_at: paidAt
+  };
+
+  const { error: fallbackError } = await supabase
+    .from('vaccine_books')
+    .update(fallbackPatch)
+    .eq('id', bookId);
+
+  if (fallbackError) throw fallbackError;
   return true;
 }

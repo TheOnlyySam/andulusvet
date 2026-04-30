@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import ScreenHeader from '../components/ScreenHeader';
 import { AppContext } from '../context/AppContext';
 import { APP_ROUTES } from '../constants/navigation';
@@ -31,6 +32,7 @@ function ActionCard({ title, subtitle, icon, onPress, tone = 'light', isRTL }) {
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
+  const tabBarHeight = useBottomTabBarHeight();
   const { isReady, isLoggedIn, isAdmin, currentUser, currentProfile, authSignOut } = useContext(AppContext);
   const { isRTL, t } = useLocalization();
 
@@ -51,7 +53,7 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: tabBarHeight + spacing.lg }]} showsVerticalScrollIndicator={false}>
         <ScreenHeader title={t('profile.title')} subtitle={t('profile.accountSubtitle')} showLanguage />
 
         <View style={styles.heroCard}>
