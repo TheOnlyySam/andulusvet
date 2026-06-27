@@ -10,6 +10,7 @@ import {
   View
 } from 'react-native';
 import { Text } from '../components/Typography';
+import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
@@ -935,40 +936,78 @@ export default function PetsVaccinesScreen() {
       <ScreenHeader title={t('books.title')} subtitle={t('books.listSubtitle')} />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.booksHero}>
+          <View style={styles.booksHeroGlow} />
+          <View style={[styles.booksHeroRow, { flexDirection: getRowDirection(isRTL) }]}>
+            <View style={styles.booksHeroIcon}><Ionicons name="medkit-outline" size={27} color="#fff" /></View>
+            <View style={styles.booksHeroCopy}>
+              <Text style={[styles.booksHeroTitle, { textAlign: getTextAlign(isRTL) }]}>{language === 'ar' ? 'ملفات صحية منظمة' : 'Organized health records'}</Text>
+              <Text style={[styles.booksHeroSubtitle, { textAlign: getTextAlign(isRTL) }]}>{language === 'ar' ? 'تابع اللقاحات والمواعيد وحالة كل ملف بسهولة' : 'Track vaccines, appointments, and every record status'}</Text>
+            </View>
+          </View>
+          <View style={[styles.booksHeroStat, { flexDirection: getRowDirection(isRTL) }]}>
+            <Text style={styles.booksHeroNumber}>{vaccineBooksForUser.length}</Text>
+            <Text style={styles.booksHeroStatText}>{language === 'ar' ? 'ملف في حسابك' : 'records in your account'}</Text>
+          </View>
+        </View>
+
         {!isLoggedIn ? (
           <View style={styles.warningCard}>
+            <Ionicons name="lock-closed-outline" size={21} color={colors.danger} />
             <Text style={[styles.warningTxt, { textAlign: getTextAlign(isRTL) }]}>{t('books.loginHint')}</Text>
           </View>
         ) : null}
 
-        <TouchableOpacity style={styles.saveBtn} onPress={startCreate}>
+        <TouchableOpacity style={styles.createBookBtn} onPress={startCreate} activeOpacity={0.85}>
+          <View style={styles.createBookIcon}><Ionicons name="add" size={22} color={colors.secondary} /></View>
           <Text style={styles.saveTxt}>
             {currentProfile?.role === 'admin' ? t('books.create') : t('books.createRequest')}
           </Text>
+          <Ionicons name={isRTL ? 'chevron-back' : 'chevron-forward'} size={20} color="#fff" />
         </TouchableOpacity>
 
-        <View style={styles.card}>
-          <Text style={[styles.sectionTitle, { textAlign: getTextAlign(isRTL) }]}>{t('books.infoSection')}</Text>
-          {!vaccineBooksForUser.length ? <Text style={[styles.empty, { textAlign: getTextAlign(isRTL) }]}>{t('books.noBooks')}</Text> : null}
+        <View style={[styles.recordsHeading, { flexDirection: getRowDirection(isRTL) }]}>
+          <Text style={styles.recordsTitle}>{language === 'ar' ? 'ملفاتي' : 'My records'}</Text>
+          <View style={styles.recordsCount}><Text style={styles.recordsCountText}>{vaccineBooksForUser.length}</Text></View>
+        </View>
+
+        {!vaccineBooksForUser.length ? (
+          <View style={styles.emptyCard}>
+            <View style={styles.emptyIcon}><Ionicons name="document-text-outline" size={31} color={colors.secondary} /></View>
+            <Text style={styles.emptyTitle}>{t('books.noBooks')}</Text>
+            <Text style={styles.emptySubtitle}>{language === 'ar' ? 'ابدأ بإنشاء ملف جديد لتنظيم اللقاحات والمواعيد' : 'Create a new record to organize vaccines and appointments'}</Text>
+          </View>
+        ) : null}
+
           {vaccineBooksForUser.map((book) => (
             <TouchableOpacity key={book.id} style={styles.bookRow} onPress={() => openBookDetails(book.id)}>
-              <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>{t('books.clientName')}: {book.clientName}</Text>
-              <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>{t('books.petName')}: {book.petName}</Text>
-              <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>{t('books.vetName')}: {book.vetName}</Text>
-              <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>{t('books.location')}: {book.location}</Text>
-              <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>
-                {t('books.requestStatus')}: {(book.approvalStatus || book.approval_status) === 'pending' ? t('books.statusPending') : t('books.statusApproved')}
-              </Text>
-              <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>
-                {t('books.paymentStatus')}: {(book.paymentStatus || book.payment_status) === 'paid' ? t('books.statusPaid') : t('books.statusUnpaid')}
-              </Text>
-              <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>
-                {t('books.bookFee')}: {formatCurrency(book.paymentAmountIqd || book.payment_amount_iqd || VACCINE_BOOK_PRICE_IQD, language)}
-              </Text>
-              <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>{t('books.firstVisitDate')}: {book.firstVisitDateIso ? formatDate(book.firstVisitDateIso, language) : '-'}</Text>
+              <View style={[styles.bookTop, { flexDirection: getRowDirection(isRTL) }]}>
+                {book.image?.uri ? <Image source={{ uri: book.image.uri }} style={styles.petThumb} /> : <View style={styles.petThumbFallback}><Ionicons name="paw" size={23} color={colors.secondary} /></View>}
+                <View style={styles.bookMain}>
+                  <Text numberOfLines={1} style={[styles.petName, { textAlign: getTextAlign(isRTL) }]}>{book.petName}</Text>
+                  <Text numberOfLines={1} style={[styles.ownerName, { textAlign: getTextAlign(isRTL) }]}>{book.clientName}</Text>
+                </View>
+                <View style={styles.openIcon}><Ionicons name={isRTL ? 'chevron-back' : 'chevron-forward'} size={19} color={colors.secondary} /></View>
+              </View>
+
+              <View style={[styles.statusRow, { flexDirection: getRowDirection(isRTL) }]}>
+                <View style={[styles.statusBadge, (book.approvalStatus || book.approval_status) === 'pending' ? styles.statusPending : styles.statusSuccess]}>
+                  <View style={[styles.statusDot, { backgroundColor: (book.approvalStatus || book.approval_status) === 'pending' ? colors.warning : colors.success }]} />
+                  <Text style={styles.statusText}>{(book.approvalStatus || book.approval_status) === 'pending' ? t('books.statusPending') : t('books.statusApproved')}</Text>
+                </View>
+                <View style={[styles.statusBadge, (book.paymentStatus || book.payment_status) === 'paid' ? styles.statusSuccess : styles.statusPending]}>
+                  <Ionicons name={(book.paymentStatus || book.payment_status) === 'paid' ? 'checkmark-circle-outline' : 'time-outline'} size={14} color={(book.paymentStatus || book.payment_status) === 'paid' ? colors.success : colors.warning} />
+                  <Text style={styles.statusText}>{(book.paymentStatus || book.payment_status) === 'paid' ? t('books.statusPaid') : t('books.statusUnpaid')}</Text>
+                </View>
+              </View>
+
+              <View style={styles.bookDivider} />
+              <View style={[styles.bookMeta, { flexDirection: getRowDirection(isRTL) }]}>
+                <View style={styles.metaItem}><Ionicons name="calendar-outline" size={16} color={colors.textSoft} /><Text style={styles.metaText}>{book.firstVisitDateIso ? formatDate(book.firstVisitDateIso, language) : '-'}</Text></View>
+                <View style={styles.metaItem}><Ionicons name="wallet-outline" size={16} color={colors.textSoft} /><Text style={styles.metaText}>{formatCurrency(book.paymentAmountIqd || book.payment_amount_iqd || VACCINE_BOOK_PRICE_IQD, language)}</Text></View>
+              </View>
             </TouchableOpacity>
           ))}
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -989,7 +1028,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#F7CBC4',
     borderRadius: radius.md,
-    padding: spacing.md
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm
   },
   warningTxt: {
     color: colors.danger,
@@ -999,7 +1042,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     padding: spacing.lg,
     ...shadows.card
   },
@@ -1007,7 +1050,7 @@ const styles = StyleSheet.create({
     fontSize: typography.h3,
     fontWeight: '900',
     color: colors.secondary,
-    marginBottom: spacing.sm
+    marginBottom: spacing.md
   },
   helper: {
     color: colors.textSoft,
@@ -1099,12 +1142,14 @@ const styles = StyleSheet.create({
     fontWeight: '700'
   },
   doseCard: {
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: '#F7FBFB',
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     padding: spacing.md,
-    marginBottom: spacing.md
+    marginBottom: spacing.md,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.primary
   },
   doseTitle: {
     fontWeight: '900',
@@ -1143,10 +1188,13 @@ const styles = StyleSheet.create({
     fontSize: typography.caption
   },
   saveBtn: {
-    borderRadius: radius.md,
+    minHeight: 52,
+    borderRadius: radius.lg,
     backgroundColor: colors.secondary,
     paddingVertical: 14,
-    alignItems: 'center'
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.soft
   },
   saveTxt: {
     color: '#fff',
@@ -1173,9 +1221,11 @@ const styles = StyleSheet.create({
     resizeMode: 'cover'
   },
   backBtn: {
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceMuted,
-    paddingVertical: 12,
+    borderRadius: radius.pill,
+    backgroundColor: colors.accentSoft,
+    paddingVertical: 11,
+    paddingHorizontal: spacing.lg,
+    alignSelf: 'flex-start',
     alignItems: 'center',
     marginTop: 4,
     marginBottom: spacing.md
@@ -1189,9 +1239,63 @@ const styles = StyleSheet.create({
     fontSize: typography.body
   },
   bookRow: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: spacing.md,
-    marginTop: spacing.sm
-  }
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.xl,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    ...shadows.soft
+  },
+  booksHero: {
+    backgroundColor: colors.secondary,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    overflow: 'hidden',
+    ...shadows.card
+  },
+  booksHeroGlow: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(108,197,199,0.14)',
+    right: -55,
+    top: -85
+  },
+  booksHeroRow: { alignItems: 'center', gap: spacing.md },
+  booksHeroIcon: { width: 54, height: 54, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
+  booksHeroCopy: { flex: 1 },
+  booksHeroTitle: { color: '#fff', fontSize: typography.h3, fontWeight: '900' },
+  booksHeroSubtitle: { color: '#CFE0E2', fontSize: typography.bodySm, lineHeight: 20, marginTop: 4 },
+  booksHeroStat: { alignItems: 'baseline', gap: 7, marginTop: spacing.lg },
+  booksHeroNumber: { color: colors.accent, fontSize: typography.h2, fontWeight: '900' },
+  booksHeroStatText: { color: '#fff', fontSize: typography.caption, fontWeight: '700' },
+  createBookBtn: { minHeight: 58, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.secondary, borderRadius: radius.lg, paddingHorizontal: spacing.md, ...shadows.soft },
+  createBookIcon: { width: 36, height: 36, borderRadius: 12, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
+  recordsHeading: { alignItems: 'center', gap: 8, marginTop: spacing.sm },
+  recordsTitle: { color: colors.secondary, fontSize: typography.h3, fontWeight: '900' },
+  recordsCount: { minWidth: 28, height: 28, borderRadius: 14, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
+  recordsCountText: { color: colors.secondary, fontSize: typography.caption, fontWeight: '900' },
+  emptyCard: { alignItems: 'center', backgroundColor: '#fff', borderWidth: 1, borderColor: colors.border, borderRadius: radius.xl, padding: spacing.xl },
+  emptyIcon: { width: 62, height: 62, borderRadius: 21, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md },
+  emptyTitle: { color: colors.secondary, fontSize: typography.body, fontWeight: '900', textAlign: 'center' },
+  emptySubtitle: { color: colors.textSoft, fontSize: typography.bodySm, lineHeight: 20, textAlign: 'center', marginTop: 5 },
+  bookTop: { alignItems: 'center', gap: spacing.sm },
+  petThumb: { width: 58, height: 58, borderRadius: 18, backgroundColor: colors.surfaceMuted },
+  petThumbFallback: { width: 58, height: 58, borderRadius: 18, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
+  bookMain: { flex: 1 },
+  petName: { color: colors.secondary, fontSize: typography.h3, fontWeight: '900' },
+  ownerName: { color: colors.textSoft, fontSize: typography.bodySm, marginTop: 3 },
+  openIcon: { width: 36, height: 36, borderRadius: 12, backgroundColor: '#F0F7F7', alignItems: 'center', justifyContent: 'center' },
+  statusRow: { flexWrap: 'wrap', gap: 7, marginTop: spacing.md },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: radius.pill, paddingHorizontal: 9, paddingVertical: 6 },
+  statusPending: { backgroundColor: '#FFF6E7' },
+  statusSuccess: { backgroundColor: '#EAF8F1' },
+  statusDot: { width: 7, height: 7, borderRadius: 4 },
+  statusText: { color: colors.text, fontSize: typography.caption, fontWeight: '800' },
+  bookDivider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.md },
+  bookMeta: { alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  metaText: { color: colors.textSoft, fontSize: typography.caption, fontWeight: '700' }
 });
