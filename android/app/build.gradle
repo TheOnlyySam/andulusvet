@@ -109,9 +109,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.andulusvet.app'
+    namespace 'com.andulusvet.mobile'
     defaultConfig {
-        applicationId 'com.andulusvet.app'
+        applicationId 'com.andulusvet.client'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

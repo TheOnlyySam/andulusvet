@@ -1,4 +1,4 @@
-package com.andulusvet.app
+package com.andulusvet.mobile
 
 import android.os.Build
 import android.os.Bundle
