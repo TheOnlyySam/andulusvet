@@ -1,5 +1,6 @@
 import React from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Text, TextInput } from './Typography';
 import { useLocalization } from '../context/LocalizationContext';
 import { colors, radius, spacing, typography } from '../theme';
 import { getTextAlign } from '../utils/format';
@@ -19,7 +20,7 @@ export default function FormField({ label, multiline = false, style, inputStyle,
           { textAlign: getTextAlign(isRTL) },
           inputStyle
         ]}
-        placeholderTextColor="#8A9996"
+        placeholderTextColor={colors.tabInactive}
       />
     </View>
   );
@@ -38,7 +39,7 @@ const styles = StyleSheet.create({
   input: {
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
     paddingVertical: 13,

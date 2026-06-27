@@ -1,5 +1,6 @@
 import React, { useContext, useMemo } from 'react';
-import { ImageBackground, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ImageBackground, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Text } from '../components/Typography';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -173,7 +174,7 @@ export default function CategoriesScreen() {
         <View style={styles.categoryStack}>
           {visibleCategories.map((item, index) => {
             const active = selectedCategory === item.id;
-            const accentColors = ['rgba(123,198,164,0.88)', 'rgba(74,124,155,0.82)', 'rgba(193,122,44,0.82)'];
+            const accentColors = ['rgba(108,197,199,0.92)', 'rgba(108,197,199,0.76)', 'rgba(108,197,199,0.60)'];
             return (
               <TouchableOpacity
                 key={item.id}
@@ -185,7 +186,7 @@ export default function CategoriesScreen() {
                   <View
                     style={[
                       styles.categoryOverlay,
-                      { backgroundColor: active ? accentColors[index % accentColors.length] : 'rgba(47,93,98,0.56)' }
+                      { backgroundColor: active ? accentColors[index % accentColors.length] : 'rgba(15,31,45,0.56)' }
                     ]}
                   >
                     <View style={[styles.categoryIconPill, { flexDirection: getRowDirection(isRTL) }]}>
@@ -237,7 +238,7 @@ const styles = StyleSheet.create({
     width: 160,
     height: 160,
     borderRadius: 80,
-    backgroundColor: 'rgba(243,201,119,0.24)',
+    backgroundColor: 'rgba(108,197,199,0.24)',
     top: -50,
     left: -28
   },
@@ -335,7 +336,7 @@ const styles = StyleSheet.create({
   topCardOverlay: {
     borderRadius: radius.lg,
     padding: spacing.lg,
-    backgroundColor: 'rgba(47,93,98,0.54)',
+    backgroundColor: 'rgba(15,31,45,0.54)',
     minHeight: 152,
     justifyContent: 'flex-end'
   },

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Easing, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Text } from '../components/Typography';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -20,7 +21,7 @@ export default function HomeScreen() {
       title: t('home.cards.booksTitle'),
       subtitle: t('home.cards.booksSubtitle'),
       icon: 'book-outline',
-      accent: '#E6F4ED',
+      accent: colors.accentSoft,
       screen: t('nav.books')
     },
     {
@@ -28,7 +29,7 @@ export default function HomeScreen() {
       title: t('home.cards.shopTitle'),
       subtitle: t('home.cards.shopSubtitle'),
       icon: 'storefront-outline',
-      accent: '#FFF3DE',
+      accent: colors.accentSoft,
       screen: t('nav.shop')
     },
     {
@@ -36,7 +37,7 @@ export default function HomeScreen() {
       title: t('home.cards.categoriesTitle'),
       subtitle: t('home.cards.categoriesSubtitle'),
       icon: 'paw-outline',
-      accent: '#E8EFF9',
+      accent: colors.accentSoft,
       screen: t('nav.categories')
     },
     {
@@ -44,7 +45,7 @@ export default function HomeScreen() {
       title: t('home.cards.cartTitle'),
       subtitle: t('home.cards.cartSubtitle'),
       icon: 'cart-outline',
-      accent: '#F1EAF7',
+      accent: colors.accentSoft,
       screen: t('nav.cart')
     }
   ];
@@ -82,7 +83,7 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <ScreenHeader
-          title={t('common.appName')}
+          title={t('nav.home')}
           subtitle={t('common.clinicSubtitle')}
           showLanguage
         />
@@ -131,10 +132,27 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </Animated.View>
 
+        <TouchableOpacity
+          style={styles.bookFeature}
+          onPress={() => navigation.navigate(t('nav.books'))}
+          activeOpacity={0.88}
+        >
+          <View style={[styles.bookFeatureRow, { flexDirection: getRowDirection(isRTL) }]}>
+            <View style={styles.bookFeatureIcon}>
+              <Ionicons name="book" size={30} color={colors.primaryDark} />
+            </View>
+            <View style={styles.bookFeatureCopy}>
+              <Text style={[styles.bookFeatureTitle, { textAlign: getTextAlign(isRTL) }]}>{t('home.cards.booksTitle')}</Text>
+              <Text style={[styles.bookFeatureSubtitle, { textAlign: getTextAlign(isRTL) }]}>{t('home.cards.booksSubtitle')}</Text>
+            </View>
+            <Ionicons name={isRTL ? 'chevron-back' : 'chevron-forward'} size={25} color={colors.primaryDark} />
+          </View>
+        </TouchableOpacity>
+
         <Text style={[styles.sectionTitle, { textAlign: getTextAlign(isRTL) }]}>{t('home.quickTitle')}</Text>
 
         <View style={styles.grid}>
-          {quickActions.map((item) => (
+          {quickActions.filter((item) => item.id !== 'books').map((item) => (
             <TouchableOpacity
               key={item.id}
               style={[styles.actionCard, { backgroundColor: item.accent }]}
@@ -195,7 +213,7 @@ const styles = StyleSheet.create({
     width: 180,
     height: 180,
     borderRadius: 90,
-    backgroundColor: 'rgba(243, 201, 119, 0.28)',
+    backgroundColor: 'rgba(108, 197, 199, 0.30)',
     top: -54,
     left: -24
   },
@@ -255,6 +273,39 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
     marginBottom: spacing.md
   },
+  bookFeature: {
+    marginTop: spacing.lg,
+    minHeight: 126,
+    justifyContent: 'center',
+    backgroundColor: colors.accent,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    ...shadows.card
+  },
+  bookFeatureRow: {
+    alignItems: 'center',
+    gap: spacing.md
+  },
+  bookFeatureIcon: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  bookFeatureCopy: { flex: 1 },
+  bookFeatureTitle: {
+    color: colors.primaryDark,
+    fontSize: typography.h2,
+    fontWeight: '900',
+    marginBottom: 5
+  },
+  bookFeatureSubtitle: {
+    color: colors.primaryDark,
+    fontSize: typography.bodySm,
+    lineHeight: 21
+  },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -267,7 +318,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: 'rgba(47,93,98,0.08)',
+    borderColor: 'rgba(15,31,45,0.08)',
     ...shadows.soft
   },
   cardTopRow: {

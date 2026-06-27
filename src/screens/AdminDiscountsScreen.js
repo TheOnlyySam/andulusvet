@@ -1,5 +1,6 @@
 import React, { useContext, useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Text } from '../components/Typography';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FormField from '../components/FormField';
 import ScreenHeader from '../components/ScreenHeader';

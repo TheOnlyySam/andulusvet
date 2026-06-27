@@ -7,6 +7,8 @@ export const APP_ROUTES = {
   termsOfService: 'TermsOfServiceScreen',
   adminHome: 'AdminHomeScreen',
   adminProducts: 'AdminProductsScreen',
+  adminProductList: 'AdminProductListScreen',
+  adminEditProduct: 'AdminEditProductScreen',
   adminDiscounts: 'AdminDiscountsScreen',
   adminVaccines: 'AdminVaccinesScreen'
 };

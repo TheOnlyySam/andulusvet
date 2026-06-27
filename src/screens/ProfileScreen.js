@@ -1,5 +1,6 @@
 import React, { useContext } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from '../components/Typography';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -177,7 +178,7 @@ const styles = StyleSheet.create({
     width: 180,
     height: 180,
     borderRadius: 90,
-    backgroundColor: 'rgba(243, 201, 119, 0.2)',
+    backgroundColor: 'rgba(108, 197, 199, 0.20)',
     top: -50,
     right: -35
   },

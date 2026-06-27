@@ -152,3 +152,13 @@ Expo will expose these to the app because they use the `EXPO_PUBLIC_` prefix.
 - Vaccine books and booking records are normalized into the app's existing booking model.
 - Notifications are ready for Supabase but still fall back to mock/local behavior when credentials are missing.
 - Admin UI visibility depends on the `profiles.role` field.
+# Electronic book pet and deworming fields
+
+Apply this additive migration to existing projects so sex, breed, and the separate deworming records persist in Supabase:
+
+```sql
+alter table public.vaccine_books add column if not exists pet_sex text;
+alter table public.vaccine_books add column if not exists pet_breed text;
+alter table public.booking_records add column if not exists record_type text not null default 'vaccine';
+alter table public.booking_records add column if not exists status text not null default 'pending';
+```

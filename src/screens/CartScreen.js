@@ -1,5 +1,7 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, KeyboardAvoidingView, Linking, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Text } from '../components/Typography';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import FormField from '../components/FormField';
 import ScreenHeader from '../components/ScreenHeader';
@@ -197,36 +199,51 @@ export default function CartScreen() {
           keyboardDismissMode="on-drag"
           automaticallyAdjustKeyboardInsets
         >
-          {!cart.length ? <Text style={styles.empty}>{t('cart.empty')}</Text> : null}
+          {!cart.length ? (
+            <View style={styles.emptyCard}>
+              <View style={styles.emptyIcon}><Ionicons name="cart-outline" size={34} color={colors.secondary} /></View>
+              <Text style={styles.emptyTitle}>{t('cart.empty')}</Text>
+              <Text style={styles.emptySubtitle}>{language === 'ar' ? 'أضف منتجات من المتجر وستظهر هنا مباشرة' : 'Add products from the shop and they will appear here'}</Text>
+            </View>
+          ) : (
+            <View style={[styles.cartIntro, { flexDirection: getRowDirection(isRTL) }]}>
+              <View>
+                <Text style={[styles.cartIntroTitle, { textAlign: getTextAlign(isRTL) }]}>{language === 'ar' ? 'مراجعة الطلب' : 'Review order'}</Text>
+                <Text style={styles.cartIntroSubtitle}>{cart.length} {language === 'ar' ? 'منتج في السلة' : 'items in your cart'}</Text>
+              </View>
+              <View style={styles.cartCountBadge}><Text style={styles.cartCountText}>{cart.reduce((sum, item) => sum + item.qty, 0)}</Text></View>
+            </View>
+          )}
 
           {cart.map((item) => (
-            <View key={item.id} style={styles.card}>
-              <Text style={[styles.name, { textAlign: getTextAlign(isRTL) }]}>
-                {pickLocalizedText(item.name, language)}
-              </Text>
-              <Text style={[styles.price, { textAlign: getTextAlign(isRTL) }]}>
-                {formatCurrency(item.price, language)}
-              </Text>
-
-              <View style={[styles.qtyRow, { flexDirection: getRowDirection(isRTL) }]}>
-                <TouchableOpacity style={styles.qtyBtn} onPress={() => changeQty(item.id, 1)}>
-                  <Text style={styles.qtyTxt}>+</Text>
-                </TouchableOpacity>
-                <Text style={styles.qtyValue}>
-                  {t('cart.quantity')}: {item.qty}
-                </Text>
-                <TouchableOpacity style={styles.qtyBtn} onPress={() => changeQty(item.id, -1)}>
-                  <Text style={styles.qtyTxt}>-</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.removeBtn} onPress={() => removeFromCart(item.id)}>
-                  <Text style={styles.removeTxt}>{t('common.remove')}</Text>
-                </TouchableOpacity>
+            <View key={item.id} style={[styles.card, { flexDirection: getRowDirection(isRTL) }]}>
+              {item.image ? <Image source={{ uri: item.image }} style={styles.itemImage} resizeMode="cover" /> : <View style={styles.itemImageFallback}><Ionicons name="cube-outline" size={25} color={colors.primary} /></View>}
+              <View style={styles.itemContent}>
+                <View style={[styles.itemTopRow, { flexDirection: getRowDirection(isRTL) }]}>
+                  <Text numberOfLines={2} style={[styles.name, { textAlign: getTextAlign(isRTL) }]}>{pickLocalizedText(item.name, language)}</Text>
+                  <TouchableOpacity style={styles.removeIcon} onPress={() => removeFromCart(item.id)} accessibilityLabel={t('common.remove')}>
+                    <Ionicons name="trash-outline" size={18} color={colors.danger} />
+                  </TouchableOpacity>
+                </View>
+                <Text style={[styles.unitPrice, { textAlign: getTextAlign(isRTL) }]}>{formatCurrency(item.price, language)} × {item.qty}</Text>
+                <View style={[styles.itemBottomRow, { flexDirection: getRowDirection(isRTL) }]}>
+                  <View style={[styles.stepper, { flexDirection: getRowDirection(isRTL) }]}>
+                    <TouchableOpacity style={styles.qtyBtn} onPress={() => changeQty(item.id, -1)}><Ionicons name="remove" size={17} color={colors.secondary} /></TouchableOpacity>
+                    <Text style={styles.qtyValue}>{item.qty}</Text>
+                    <TouchableOpacity style={styles.qtyBtnActive} onPress={() => changeQty(item.id, 1)}><Ionicons name="add" size={17} color="#fff" /></TouchableOpacity>
+                  </View>
+                  <Text style={styles.price}>{formatCurrency(item.price * item.qty, language)}</Text>
+                </View>
               </View>
             </View>
           ))}
 
           <View style={styles.summaryCard}>
-            <Text style={[styles.formTitle, { textAlign: getTextAlign(isRTL) }]}>{t('cart.orderInfo')}</Text>
+            <View style={[styles.sectionHeading, { flexDirection: getRowDirection(isRTL) }]}>
+              <View style={styles.sectionIcon}><Ionicons name="receipt-outline" size={20} color={colors.secondary} /></View>
+              <View><Text style={styles.summaryTitle}>{language === 'ar' ? 'ملخص السلة' : 'Cart summary'}</Text><Text style={styles.summarySubtitle}>{language === 'ar' ? 'تفاصيل السعر قبل إرسال الطلب' : 'Price details before sending'}</Text></View>
+            </View>
+            <View style={styles.summaryDivider} />
             <View style={[styles.summaryRow, { flexDirection: getRowDirection(isRTL) }]}>
               <Text style={styles.summaryLabel}>{t('cart.subtotal')}</Text>
               <Text style={styles.summaryValue}>{formatCurrency(cartSummary.subtotal, language)}</Text>
@@ -236,14 +253,18 @@ export default function CartScreen() {
               <Text style={styles.summaryValue}>{formatCurrency(cartSummary.discountAmount, language)}</Text>
             </View>
             {discountHint ? <Text style={[styles.discountHint, { textAlign: getTextAlign(isRTL) }]}>{discountHint}</Text> : null}
-            <View style={[styles.summaryRow, { flexDirection: getRowDirection(isRTL) }]}>
+            <View style={styles.summaryDivider} />
+            <View style={[styles.summaryRow, styles.totalRow, { flexDirection: getRowDirection(isRTL) }]}>
               <Text style={styles.totalLabel}>{t('cart.total')}</Text>
               <Text style={styles.totalValue}>{formatCurrency(cartSummary.total, language)}</Text>
             </View>
           </View>
 
           <View style={styles.formCard}>
-            <Text style={[styles.formTitle, { textAlign: getTextAlign(isRTL) }]}>{t('cart.orderInfo')}</Text>
+            <View style={[styles.sectionHeading, { flexDirection: getRowDirection(isRTL) }]}>
+              <View style={styles.sectionIcon}><Ionicons name="person-outline" size={20} color={colors.secondary} /></View>
+              <View style={styles.sectionHeadingCopy}><Text style={[styles.formTitle, { textAlign: getTextAlign(isRTL) }]}>{t('cart.orderInfo')}</Text><Text style={[styles.sectionSubtitle, { textAlign: getTextAlign(isRTL) }]}>{language === 'ar' ? 'أدخل معلومات الاستلام والتوصيل' : 'Enter delivery and contact details'}</Text></View>
+            </View>
 
             <FormField
               label={t('cart.receiverName')}
@@ -322,6 +343,7 @@ export default function CartScreen() {
             <Text style={[styles.footerTitle, { textAlign: getTextAlign(isRTL) }]}>{t('cart.readyTitle')}</Text>
             <Text style={[styles.footerSubtitle, { textAlign: getTextAlign(isRTL) }]}>{t('cart.readySubtitle')}</Text>
             <TouchableOpacity style={styles.reserveBtn} onPress={reserveOrder}>
+              <Ionicons name="logo-whatsapp" size={21} color="#fff" />
               <Text style={styles.reserveTxt}>{t('cart.sendWhatsapp')}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={clearCart}>
@@ -460,7 +482,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     alignItems: 'center',
     paddingVertical: 11,
-    backgroundColor: '#F8FBF8'
+    backgroundColor: colors.surfaceMuted
   },
   ghostBtnTxt: {
     color: colors.secondary,
@@ -486,7 +508,7 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: '#DCE8E1',
+    borderColor: colors.border,
     backgroundColor: '#FFFFFF',
     paddingVertical: 10,
     paddingHorizontal: spacing.md
@@ -554,5 +576,73 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing.md,
     fontWeight: '700'
-  }
+  },
+  emptyCard: {
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.xl,
+    padding: spacing.xl,
+    marginBottom: spacing.md
+  },
+  emptyIcon: {
+    width: 66,
+    height: 66,
+    borderRadius: 22,
+    backgroundColor: colors.accentSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md
+  },
+  emptyTitle: { color: colors.secondary, fontSize: typography.h3, fontWeight: '900', textAlign: 'center' },
+  emptySubtitle: { color: colors.textSoft, fontSize: typography.bodySm, lineHeight: 20, textAlign: 'center', marginTop: 6 },
+  cartIntro: { justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
+  cartIntroTitle: { color: colors.secondary, fontSize: typography.h3, fontWeight: '900' },
+  cartIntroSubtitle: { color: colors.textSoft, fontSize: typography.caption, marginTop: 3 },
+  cartCountBadge: { width: 42, height: 42, borderRadius: 15, backgroundColor: colors.secondary, alignItems: 'center', justifyContent: 'center' },
+  cartCountText: { color: '#fff', fontSize: typography.label, fontWeight: '900' },
+  card: {
+    borderWidth: 1,
+    borderColor: '#DCEAEA',
+    borderRadius: radius.xl,
+    padding: 10,
+    gap: spacing.md,
+    marginBottom: spacing.md,
+    backgroundColor: '#fff',
+    ...shadows.soft
+  },
+  itemImage: { width: 92, height: 112, borderRadius: radius.lg, backgroundColor: colors.surfaceMuted },
+  itemImageFallback: { width: 92, height: 112, borderRadius: radius.lg, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
+  itemContent: { flex: 1, paddingVertical: 2, justifyContent: 'space-between' },
+  itemTopRow: { alignItems: 'flex-start', gap: 7 },
+  name: { flex: 1, color: colors.text, fontWeight: '900', fontSize: typography.body, lineHeight: 21 },
+  removeIcon: { width: 34, height: 34, borderRadius: 11, backgroundColor: '#FFF1F0', alignItems: 'center', justifyContent: 'center' },
+  unitPrice: { color: colors.textSoft, fontSize: typography.caption, marginTop: 3 },
+  itemBottomRow: { alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.sm },
+  stepper: { height: 36, alignItems: 'center', borderRadius: 12, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
+  qtyBtn: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F8F8' },
+  qtyBtnActive: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.secondary },
+  qtyValue: { minWidth: 32, textAlign: 'center', color: colors.secondary, fontWeight: '900', fontSize: typography.bodySm },
+  price: { color: colors.secondary, fontWeight: '900', fontSize: typography.label },
+  summaryCard: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.xl, padding: spacing.lg, marginBottom: spacing.md, backgroundColor: colors.secondary, ...shadows.card },
+  summaryTitle: { color: '#fff', fontWeight: '900', fontSize: typography.h3 },
+  summarySubtitle: { color: '#CFE0E2', fontSize: typography.caption, marginTop: 2 },
+  sectionHeading: { alignItems: 'center', gap: spacing.sm, marginBottom: spacing.lg },
+  sectionHeadingCopy: { flex: 1 },
+  sectionIcon: { width: 42, height: 42, borderRadius: 14, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
+  sectionSubtitle: { color: colors.textSoft, fontSize: typography.caption, marginTop: 2 },
+  summaryDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.15)', marginBottom: spacing.md },
+  summaryRow: { justifyContent: 'space-between', alignItems: 'center', marginBottom: 11 },
+  summaryLabel: { color: '#CFE0E2', fontSize: typography.bodySm },
+  summaryValue: { color: '#fff', fontWeight: '800' },
+  totalRow: { marginTop: 3, marginBottom: 0 },
+  totalLabel: { color: '#fff', fontSize: typography.body, fontWeight: '900' },
+  totalValue: { color: colors.accent, fontSize: typography.h3, fontWeight: '900' },
+  discountHint: { color: colors.accent, fontSize: typography.caption, marginBottom: spacing.sm },
+  formCard: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.xl, padding: spacing.lg, marginBottom: spacing.md, backgroundColor: '#fff', ...shadows.soft },
+  formTitle: { color: colors.secondary, fontWeight: '900', fontSize: typography.h3, marginBottom: 0 },
+  ghostBtn: { flex: 1, borderWidth: 1, borderColor: colors.secondary, borderRadius: radius.md, alignItems: 'center', paddingVertical: 12, backgroundColor: '#fff' },
+  footer: { backgroundColor: colors.accentSoft, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, padding: spacing.lg },
+  reserveBtn: { minHeight: 52, borderRadius: radius.md, backgroundColor: '#1F9D63', flexDirection: 'row', gap: 8, justifyContent: 'center', alignItems: 'center', paddingHorizontal: spacing.md }
 });

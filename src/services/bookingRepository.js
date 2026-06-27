@@ -10,6 +10,8 @@ function toBookingRecordRow(record, vaccineBookId) {
     pet_name: record.pet_name || record.petName || '',
     pet_type: record.pet_type || record.petType || '',
     vaccine_name: record.vaccine_name || record.vaccineName || '',
+    record_type: record.record_type || record.recordType || 'vaccine',
+    status: record.status || 'pending',
     date_iso: record.date_iso || record.dateIso || null,
     planned_date_iso: record.planned_date_iso || record.plannedDateIso || record.date_iso || record.dateIso || null,
     received_date_iso: record.received_date_iso || record.receivedDateIso || null,
@@ -25,6 +27,8 @@ function toVaccineBookRow(payload) {
     location: payload.location || '',
     pet_name: payload.pet_name || payload.petName || '',
     pet_type: payload.pet_type || payload.petType || '',
+    pet_sex: payload.pet_sex || payload.petSex || '',
+    pet_breed: payload.pet_breed || payload.petBreed || '',
     first_visit_date_iso: payload.first_visit_date_iso || payload.firstVisitDateIso || '',
     pet_birth_date_iso: payload.pet_birth_date_iso || payload.petBirthDateIso || null,
     owner_phone: payload.owner_phone || payload.ownerPhone || '',
@@ -49,6 +53,8 @@ function normalizeBookingRecord(record) {
     petName: record.petName || record.pet_name || '',
     petType: record.petType || record.pet_type || '',
     vaccineName: record.vaccineName || record.vaccine_name || '',
+    recordType: record.recordType || record.record_type || (/deworm/i.test(record.vaccineName || record.vaccine_name || '') ? 'deworming' : 'vaccine'),
+    status: record.status || 'pending',
     dateIso: record.dateIso || record.date_iso || null,
     plannedDateIso: record.plannedDateIso || record.planned_date_iso || record.dateIso || record.date_iso || null,
     receivedDateIso: record.receivedDateIso || record.received_date_iso || null
@@ -64,6 +70,8 @@ function normalizeBook(book) {
     clientName: book.clientName || book.client_name || '',
     petName: book.petName || book.pet_name || '',
     petType: book.petType || book.pet_type || '',
+    petSex: book.petSex || book.pet_sex || '',
+    petBreed: book.petBreed || book.pet_breed || '',
     firstVisitDateIso: book.firstVisitDateIso || book.first_visit_date_iso || '',
     petBirthDateIso: book.petBirthDateIso || book.pet_birth_date_iso || '',
     ownerPhone: book.ownerPhone || book.owner_phone || '',
@@ -140,8 +148,11 @@ export async function createVaccineBookRecord(payload) {
     missingColumnMessage.includes('payment_amount_iqd') ||
     missingColumnMessage.includes('book_count') ||
     missingColumnMessage.includes('paid_at');
+  const petColumnMissing =
+    missingColumnMessage.includes('pet_sex') ||
+    missingColumnMessage.includes('pet_breed');
 
-  if (optionalColumnMissing) {
+  if (optionalColumnMissing || petColumnMissing) {
     const fallbackPayload = toVaccineBookRow(payload);
     delete fallbackPayload.approval_status;
     delete fallbackPayload.approved_at;
@@ -149,6 +160,8 @@ export async function createVaccineBookRecord(payload) {
     delete fallbackPayload.payment_amount_iqd;
     delete fallbackPayload.book_count;
     delete fallbackPayload.paid_at;
+    delete fallbackPayload.pet_sex;
+    delete fallbackPayload.pet_breed;
     bookResponse = await insertBook(fallbackPayload);
   }
 
@@ -156,11 +169,21 @@ export async function createVaccineBookRecord(payload) {
   const book = bookResponse.data;
 
   if (records.length) {
-    const { error: recordsError } = await supabase
+    let { error: recordsError } = await supabase
       .from('booking_records')
       .insert(
         records.map((record) => toBookingRecordRow(record, book.id))
       );
+
+    if (recordsError && /record_type|status/i.test(String(recordsError.message || ''))) {
+      const legacyRows = records.map((record) => {
+        const row = toBookingRecordRow(record, book.id);
+        delete row.record_type;
+        delete row.status;
+        return row;
+      });
+      ({ error: recordsError } = await supabase.from('booking_records').insert(legacyRows));
+    }
 
     if (recordsError) throw recordsError;
   }
@@ -189,11 +212,21 @@ export async function updateVaccineBookSchedule({ bookId, records }) {
   if (deleteError) throw deleteError;
 
   if (records.length) {
-    const { error: insertError } = await supabase
+    let { error: insertError } = await supabase
       .from('booking_records')
       .insert(
         records.map((record) => toBookingRecordRow(record, bookId))
       );
+
+    if (insertError && /record_type|status/i.test(String(insertError.message || ''))) {
+      const legacyRows = records.map((record) => {
+        const row = toBookingRecordRow(record, bookId);
+        delete row.record_type;
+        delete row.status;
+        return row;
+      });
+      ({ error: insertError } = await supabase.from('booking_records').insert(legacyRows));
+    }
 
     if (insertError) throw insertError;
   }

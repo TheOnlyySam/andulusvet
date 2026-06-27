@@ -1,22 +1,23 @@
 export const colors = {
-  primary: '#7BC6A4',
-  primaryDeep: '#45806D',
-  secondary: '#2F5D62',
-  accent: '#F3C977',
-  accentSoft: '#FFF2D7',
-  background: '#F6F3EC',
+  primary: '#6cc5c7',
+  primaryDeep: '#0f1f2d',
+  primaryDark: '#0f1f2d',
+  secondary: '#0f1f2d',
+  accent: '#6cc5c7',
+  accentSoft: '#E7F7F7',
+  background: '#F4FAFA',
   surface: '#FFFFFF',
-  surfaceMuted: '#F8FBF8',
-  text: '#1F3132',
-  textSoft: '#607274',
-  border: '#D9E5DF',
+  surfaceMuted: '#F0F8F8',
+  text: '#0f1f2d',
+  textSoft: '#49636D',
+  border: '#CBE4E5',
   success: '#2F9E73',
   warning: '#C17A2C',
   danger: '#B54747',
   info: '#4A7C9B',
-  shadow: '#264B4E',
-  tabInactive: '#8A9A96',
-  overlay: 'rgba(25, 48, 49, 0.12)'
+  shadow: '#0f1f2d',
+  tabInactive: '#6E858D',
+  overlay: 'rgba(15, 31, 45, 0.14)'
 };
 
 export const spacing = {
@@ -66,6 +67,8 @@ export const shadows = {
 };
 
 export const fontFamily = {
+  arabicLight: 'GESSUniqueLight',
+  arabicBold: 'GESSUniqueBold',
   regular: 'System',
   medium: 'System',
   bold: 'System'

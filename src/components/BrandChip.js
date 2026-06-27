@@ -1,5 +1,6 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { StyleSheet, TouchableOpacity } from 'react-native';
+import { Text } from './Typography';
 import { useLocalization } from '../context/LocalizationContext';
 import { colors, radius, spacing, typography } from '../theme';
 
@@ -31,7 +32,7 @@ const styles = StyleSheet.create({
     maxWidth: 180,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     borderRadius: radius.pill,
@@ -51,6 +52,6 @@ const styles = StyleSheet.create({
     lineHeight: 18
   },
   activeLabel: {
-    color: '#fff'
+    color: colors.surface
   }
 });

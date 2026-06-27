@@ -1,9 +1,20 @@
 export function formatCurrency(value, language = 'ar') {
-  return new Intl.NumberFormat(language === 'ar' ? 'ar-IQ' : 'en-US').format(value);
+  return new Intl.NumberFormat(language === 'ar' ? 'ar-IQ-u-nu-latn' : 'en-US', {
+    numberingSystem: 'latn'
+  }).format(value);
 }
 
 export function formatDate(value, language = 'ar') {
-  return new Date(value).toLocaleDateString(language === 'ar' ? 'ar-IQ' : 'en-US');
+  return new Date(value).toLocaleDateString(language === 'ar' ? 'ar-IQ-u-nu-latn' : 'en-US', {
+    numberingSystem: 'latn'
+  });
+}
+
+export function toWesternDigits(value) {
+  if (typeof value !== 'string') return value;
+  return value
+    .replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)))
+    .replace(/[۰-۹]/g, (digit) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)));
 }
 
 export function pickLocalizedText(value, language = 'ar') {

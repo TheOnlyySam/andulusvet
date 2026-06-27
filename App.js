@@ -1,5 +1,6 @@
 import React, { useContext } from 'react';
 import { Platform, StatusBar, StyleSheet, View } from 'react-native';
+import { useFonts } from 'expo-font';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -21,13 +22,43 @@ import TermsOfServiceScreen from './src/screens/TermsOfServiceScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
 import AdminHomeScreen from './src/screens/AdminHomeScreen';
 import AdminProductsScreen from './src/screens/AdminProductsScreen';
+import AdminProductListScreen from './src/screens/AdminProductListScreen';
+import AdminEditProductScreen from './src/screens/AdminEditProductScreen';
 import AdminDiscountsScreen from './src/screens/AdminDiscountsScreen';
 import AdminVaccinesScreen from './src/screens/AdminVaccinesScreen';
 import ToastBanner from './src/components/ToastBanner';
+import { Text } from './src/components/Typography';
 import { colors, radius, shadows } from './src/theme';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
+const ARABIC_FONT_LIGHT = 'GESSUniqueLight';
+const ARABIC_FONT_BOLD = 'GESSUniqueBold';
+
+function AppContent() {
+  const [fontsLoaded, fontError] = useFonts({
+    [ARABIC_FONT_LIGHT]: require('./assets/branding/GE SS Unique Light.otf'),
+    [ARABIC_FONT_BOLD]: require('./assets/branding/GE SS Unique Bold.otf')
+  });
+
+  if (!fontsLoaded && !fontError) {
+    return null;
+  }
+
+  return (
+    <AppProvider>
+      <SafeAreaProvider>
+        <View style={styles.root}>
+          <StatusBar
+            barStyle={Platform.OS === 'ios' ? 'dark-content' : 'default'}
+            backgroundColor={colors.background}
+          />
+          <AppShell />
+        </View>
+      </SafeAreaProvider>
+    </AppProvider>
+  );
+}
 
 function AppTabs() {
   const insets = useSafeAreaInsets();
@@ -66,6 +97,9 @@ function AppTabs() {
             fontSize: 10,
             fontWeight: '800'
           },
+          tabBarLabel: ({ color }) => (
+            <Text style={{ color, fontSize: 10, fontWeight: '800' }}>{route.name}</Text>
+          ),
           tabBarItemStyle: {
             direction: isRTL ? 'rtl' : 'ltr',
             paddingTop: 2
@@ -146,6 +180,8 @@ function AppShell() {
         <Stack.Screen name={APP_ROUTES.notifications} component={NotificationsScreen} />
         <Stack.Screen name={APP_ROUTES.adminHome} component={AdminHomeScreen} />
         <Stack.Screen name={APP_ROUTES.adminProducts} component={AdminProductsScreen} />
+        <Stack.Screen name={APP_ROUTES.adminProductList} component={AdminProductListScreen} />
+        <Stack.Screen name={APP_ROUTES.adminEditProduct} component={AdminEditProductScreen} />
         <Stack.Screen name={APP_ROUTES.adminDiscounts} component={AdminDiscountsScreen} />
         <Stack.Screen name={APP_ROUTES.adminVaccines} component={AdminVaccinesScreen} />
       </Stack.Navigator>
@@ -156,17 +192,7 @@ function AppShell() {
 export default function App() {
   return (
     <LocalizationProvider>
-      <AppProvider>
-        <SafeAreaProvider>
-          <View style={styles.root}>
-            <StatusBar
-              barStyle={Platform.OS === 'ios' ? 'dark-content' : 'default'}
-              backgroundColor={colors.background}
-            />
-            <AppShell />
-          </View>
-        </SafeAreaProvider>
-      </AppProvider>
+      <AppContent />
     </LocalizationProvider>
   );
 }

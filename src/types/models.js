@@ -68,6 +68,8 @@
  *   location: string,
  *   petName: string,
  *   petType: string,
+ *   petSex: 'male' | 'female',
+ *   petBreed: string,
  *   firstVisitDateIso: string,
  *   petBirthDateIso: string | null,
  *   ownerPhone: string,
@@ -79,3 +81,12 @@
  *   image: { uri: string } | null,
  *   records: Array<Record<string, any>>
  * }} VaccineBook
+ *
+ * @typedef {{
+ *   id: string,
+ *   petId: string,
+ *   scheduledDate: string,
+ *   doseType: string,
+ *   status: 'pending' | 'completed' | 'missed',
+ *   notes?: string
+ * }} DewormingDose

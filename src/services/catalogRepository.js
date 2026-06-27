@@ -1,5 +1,8 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getSupabaseClient } from '../lib/supabase';
 import { localizeProduct } from './catalogService';
+
+const PRODUCTS_CACHE_KEY = 'andulusvet_products_cache_v1';
 
 function toLocalizedField(primary, secondary, fallback = '') {
   if (typeof primary === 'object' && primary) {
@@ -41,17 +44,26 @@ export async function fetchProductsFromRepository() {
   const supabase = getSupabaseClient();
 
   if (!supabase) {
-    return [];
+    const cached = await AsyncStorage.getItem(PRODUCTS_CACHE_KEY);
+    return cached ? JSON.parse(cached).map(normalizeProduct) : [];
   }
 
   const { data, error } = await supabase
     .from('products')
     .select('*')
-    .eq('is_active', true)
     .order('created_at', { ascending: false });
 
-  if (error) throw error;
-  return (data || []).map(normalizeProduct);
+  if (error) {
+    const cached = await AsyncStorage.getItem(PRODUCTS_CACHE_KEY);
+    if (cached) return JSON.parse(cached).map(normalizeProduct);
+    throw error;
+  }
+
+  const products = (data || [])
+    .map(normalizeProduct)
+    .filter((product) => product.isActive !== false);
+  await AsyncStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify(products));
+  return products;
 }
 
 export async function createProductInRepository(payload) {
@@ -82,6 +94,30 @@ export async function createProductInRepository(payload) {
     .select()
     .single();
 
+  if (error) throw error;
+  return normalizeProduct(data);
+}
+
+export async function updateProductInRepository(productId, payload) {
+  const supabase = getSupabaseClient();
+  if (!supabase) throw new Error('Supabase is not configured for product updates.');
+
+  const dbPayload = {
+    name_ar: payload.name?.ar || '',
+    name_en: payload.name?.en || '',
+    brand_ar: payload.brand?.ar || '',
+    brand_en: payload.brand?.en || '',
+    description_ar: payload.desc?.ar || '',
+    description_en: payload.desc?.en || '',
+    category_id: payload.categoryId || 'c1',
+    animal_type: payload.animalType || 'all',
+    life_stage: payload.lifeStage || null,
+    price: Number(payload.price || 0),
+    image_url: payload.image || '',
+    is_active: payload.isActive !== false
+  };
+
+  const { data, error } = await supabase.from('products').update(dbPayload).eq('id', productId).select().single();
   if (error) throw error;
   return normalizeProduct(data);
 }

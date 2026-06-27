@@ -6,10 +6,10 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View
 } from 'react-native';
+import { Text } from '../components/Typography';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
@@ -45,16 +45,15 @@ const PROTOCOLS = [
     label: { ar: 'قطط - PCH (كوري)', en: 'Cats - PCH (Korean)' },
     steps: [
       { vaccineName: 'PCH', relation: { type: 'reference', months: 0 }, hint: { ar: 'الجرعة الأولى بتاريخ اول مراجعة', en: 'First dose on the first visit date' } },
-      { vaccineName: 'Worms', relation: { type: 'prev', days: 3 }, hint: { ar: 'بعد 2-3 أيام من الجرعة الاعتيادية', en: '2-3 days after the normal vaccine' } },
       { vaccineName: 'PCH', relation: { type: 'prev', months: 1 }, hint: { ar: 'بعد شهر', en: 'After 1 month' } },
       { vaccineName: 'Rabies', relation: { type: 'prev', months: 1 }, hint: { ar: 'بعد شهر', en: 'After 1 month' } },
-      { vaccineName: 'PCH Booster', relation: { type: 'index', index: 1, months: 6 }, hint: { ar: 'بعد 6 أشهر من جرعة PCH السابقة', en: '6 months after the previous PCH dose' } },
+      { vaccineName: 'PCH', relation: { type: 'index', index: 1, months: 6 }, hint: { ar: 'الجرعة الرابعة بعد 6 أشهر', en: 'Fourth dose after 6 months' } },
       {
         vaccineName: 'PCH',
         relation: { type: 'prev', months: 12 },
         hint: { ar: 'بعد سنة', en: 'After 1 year' },
         repeatEveryMonths: 12,
-        repeatCount: 3,
+        repeatCount: 6,
         repeatHint: { ar: 'متابعة سنوية', en: 'Annual follow-up dose' }
       }
     ]
@@ -65,7 +64,6 @@ const PROTOCOLS = [
     label: { ar: 'قطط - PCH (هولندا)', en: 'Cats - PCH (Netherlands)' },
     steps: [
       { vaccineName: 'PCH', relation: { type: 'reference', months: 0 }, hint: { ar: 'الجرعة الأولى بتاريخ اول مراجعة', en: 'First dose on the first visit date' } },
-      { vaccineName: 'Worms', relation: { type: 'prev', days: 3 }, hint: { ar: 'بعد 2-3 أيام من الجرعة الاعتيادية', en: '2-3 days after the normal vaccine' } },
       { vaccineName: 'PCH', relation: { type: 'prev', months: 1 }, hint: { ar: 'بعد شهر', en: 'After 1 month' } },
       { vaccineName: 'Rabies', relation: { type: 'prev', months: 1 }, hint: { ar: 'بعد شهر', en: 'After 1 month' } },
       {
@@ -73,7 +71,7 @@ const PROTOCOLS = [
         relation: { type: 'prev', months: 12 },
         hint: { ar: 'جرعة سنوية', en: 'Annual dose' },
         repeatEveryMonths: 12,
-        repeatCount: 3,
+        repeatCount: 6,
         repeatHint: { ar: 'متابعة سنوية', en: 'Annual follow-up dose' }
       }
     ]
@@ -81,17 +79,17 @@ const PROTOCOLS = [
   {
     id: 'cat_pchr',
     petType: 'cat',
-    label: { ar: 'قطط - PCHR (التشيك)', en: 'Cats - PCHR (Czech)' },
+    label: { ar: 'قطط - PCH (جمهورية التشيك)', en: 'Cats - PCH Czech Republic' },
     steps: [
       { vaccineName: 'PCHR', relation: { type: 'reference', months: 0 }, hint: { ar: 'الجرعة الأولى بتاريخ اول مراجعة', en: 'First dose on the first visit date' } },
-      { vaccineName: 'Worms', relation: { type: 'prev', days: 3 }, hint: { ar: 'بعد 2-3 أيام من الجرعة الاعتيادية', en: '2-3 days after the normal vaccine' } },
       { vaccineName: 'PCHR', relation: { type: 'prev', months: 1 }, hint: { ar: 'بعد شهر', en: 'After 1 month' } },
+      { vaccineName: 'Rabies', relation: { type: 'prev', months: 1 }, hint: { ar: 'داء الكلب', en: 'Rabies' } },
       {
         vaccineName: 'PCHR',
         relation: { type: 'prev', months: 12 },
         hint: { ar: 'بعد سنة', en: 'After 1 year' },
         repeatEveryMonths: 12,
-        repeatCount: 3,
+        repeatCount: 6,
         repeatHint: { ar: 'متابعة سنوية', en: 'Annual follow-up dose' }
       }
     ]
@@ -102,7 +100,6 @@ const PROTOCOLS = [
     label: { ar: 'كلاب - DHPPi + Lepto', en: 'Dogs - DHPPi + Lepto' },
     steps: [
       { vaccineName: 'DHPPi + Lepto', relation: { type: 'reference', months: 0 }, hint: { ar: 'الجرعة الأولى بتاريخ اول مراجعة', en: 'First dose on the first visit date' } },
-      { vaccineName: 'Worms', relation: { type: 'prev', days: 3 }, hint: { ar: 'بعد 2-3 أيام من الجرعة الاعتيادية', en: '2-3 days after the normal vaccine' } },
       { vaccineName: 'DHPPi', relation: { type: 'prev', months: 1 }, hint: { ar: 'بعد شهر', en: 'After 1 month' } },
       { vaccineName: 'Rabies', relation: { type: 'prev', months: 1 }, hint: { ar: 'بعد شهر', en: 'After 1 month' } },
       { vaccineName: 'DHPPi + Lepto', relation: { type: 'prev', months: 6 }, hint: { ar: 'بعد 6 أشهر', en: 'After 6 months' } },
@@ -111,7 +108,7 @@ const PROTOCOLS = [
         relation: { type: 'prev', months: 12 },
         hint: { ar: 'جرعة سنوية', en: 'Annual dose' },
         repeatEveryMonths: 12,
-        repeatCount: 3,
+        repeatCount: 6,
         repeatHint: { ar: 'متابعة سنوية', en: 'Annual follow-up dose' }
       }
     ]
@@ -136,9 +133,25 @@ function expandSteps(protocol) {
         hint: step.repeatHint || step.hint
       });
     }
+    expanded.push({
+      ...step,
+      relation: { type: 'prev', months: 36 },
+      hint: { ar: 'بعد عمر 7 سنوات: كل 3 سنوات', en: 'After age 7: every 3 years' }
+    });
   });
 
   return expanded;
+}
+
+function buildDewormingSchedule(referenceDate) {
+  return Array.from({ length: 29 }, (_, index) => ({
+    id: `deworming_${index}`,
+    kind: 'deworming',
+    doseType: 'Deworming',
+    plannedDate: addMonths(referenceDate, index * 3),
+    status: 'pending',
+    notes: ''
+  }));
 }
 
 function buildSchedule(protocol, referenceDate, receivedByIndex) {
@@ -197,6 +210,8 @@ export default function PetsVaccinesScreen() {
   const [clientName, setClientName] = useState('');
   const [location, setLocation] = useState('');
   const [petName, setPetName] = useState('');
+  const [petSex, setPetSex] = useState('male');
+  const [petBreed, setPetBreed] = useState('');
   const [vetName, setVetName] = useState('');
   const [ownerPhone, setOwnerPhone] = useState('');
   const [ownerEmail, setOwnerEmail] = useState('');
@@ -225,6 +240,7 @@ export default function PetsVaccinesScreen() {
     () => buildSchedule(selectedProtocol, firstVisitDate, receivedByIndex),
     [firstVisitDate, receivedByIndex, selectedProtocol]
   );
+  const dewormingRows = useMemo(() => buildDewormingSchedule(firstVisitDate), [firstVisitDate]);
 
   const selectedBook = useMemo(
     () => vaccineBooksForUser.find((book) => book.id === selectedBookId) || null,
@@ -253,6 +269,8 @@ export default function PetsVaccinesScreen() {
         setClientName(draft.clientName || '');
         setLocation(draft.location || '');
         setPetName(draft.petName || '');
+        setPetSex(draft.petSex || 'male');
+        setPetBreed(draft.petBreed || '');
         setVetName(draft.vetName || '');
         setOwnerPhone(draft.ownerPhone || '');
         setOwnerEmail(draft.ownerEmail || '');
@@ -281,6 +299,8 @@ export default function PetsVaccinesScreen() {
       clientName,
       location,
       petName,
+      petSex,
+      petBreed,
       vetName,
       ownerPhone,
       ownerEmail,
@@ -300,6 +320,8 @@ export default function PetsVaccinesScreen() {
     clientName,
     location,
     petName,
+    petSex,
+    petBreed,
     vetName,
     ownerPhone,
     ownerEmail,
@@ -320,7 +342,7 @@ export default function PetsVaccinesScreen() {
   const openBookDetails = (bookId) => {
     const book = vaccineBooksForUser.find((item) => item.id === bookId);
     if (book) {
-      const byDate = [...(book.records || [])].sort(
+      const byDate = [...(book.records || [])].filter((record) => record.recordType !== 'deworming').sort(
         (a, b) => new Date(a.plannedDateIso || a.dateIso).getTime() - new Date(b.plannedDateIso || b.dateIso).getTime()
       );
 
@@ -341,6 +363,8 @@ export default function PetsVaccinesScreen() {
     setClientName('');
     setLocation('');
     setPetName('');
+    setPetSex('male');
+    setPetBreed('');
     setVetName('');
     setOwnerPhone('');
     setOwnerEmail('');
@@ -369,7 +393,21 @@ export default function PetsVaccinesScreen() {
       return;
     }
 
-    const records = scheduleRows.map((row) => ({
+    const existingPetBook = vaccineBooksForUser.find((book) =>
+      String(book.petName || '').trim().toLocaleLowerCase() === petName.trim().toLocaleLowerCase() &&
+      String(book.petBirthDateIso || '').slice(0, 10) === petBirthDate.toISOString().slice(0, 10)
+    );
+    if (existingPetBook) {
+      Alert.alert(
+        t('alerts.warning'),
+        language === 'ar'
+          ? 'يوجد دفتر إلكتروني لهذا الحيوان بالفعل. افتح الدفتر الحالي لتجنب دفع الأجرة مرة أخرى.'
+          : 'This pet already has an electronic book. Open the existing book to avoid paying the fee again.'
+      );
+      return;
+    }
+
+    const vaccineRecords = scheduleRows.map((row) => ({
       petName: petName.trim(),
       petType: selectedProtocol.petType,
       vaccineName: row.vaccineName,
@@ -379,12 +417,26 @@ export default function PetsVaccinesScreen() {
       notes: row.hint[language] || row.hint.ar,
       attachments: []
     }));
+    const dewormingRecords = dewormingRows.map((row) => ({
+      petName: petName.trim(),
+      petType: selectedProtocol.petType,
+      vaccineName: row.doseType,
+      recordType: 'deworming',
+      status: row.status,
+      dateIso: row.plannedDate.toISOString(),
+      plannedDateIso: row.plannedDate.toISOString(),
+      receivedDateIso: null,
+      notes: row.notes,
+      attachments: []
+    }));
 
     const result = await createVaccineBook({
       clientName: clientName.trim(),
       location: location.trim(),
       petName: petName.trim(),
       petType: selectedProtocol.petType,
+      petSex,
+      petBreed: petBreed.trim(),
       firstVisitDateIso: firstVisitDate.toISOString(),
       petBirthDateIso: petBirthDate.toISOString(),
       ownerPhone: ownerPhone.trim(),
@@ -394,7 +446,7 @@ export default function PetsVaccinesScreen() {
       notes: bookNotes.trim(),
       attachment: bookAttachment,
       image: bookImage,
-      records
+      records: [...vaccineRecords, ...dewormingRecords]
     });
 
     if (!result.ok) {
@@ -418,7 +470,8 @@ export default function PetsVaccinesScreen() {
       return;
     }
 
-    const existingRecordsByDate = [...(selectedBook.records || [])].sort(
+    const dewormingRecords = (selectedBook.records || []).filter((record) => record.recordType === 'deworming');
+    const existingRecordsByDate = [...(selectedBook.records || [])].filter((record) => record.recordType !== 'deworming').sort(
       (a, b) => new Date(a.plannedDateIso || a.dateIso).getTime() - new Date(b.plannedDateIso || b.dateIso).getTime()
     );
 
@@ -439,7 +492,7 @@ export default function PetsVaccinesScreen() {
 
     const result = await updateVaccineBookRecords({
       bookId: selectedBook.id,
-      records: nextRecords
+      records: [...nextRecords, ...dewormingRecords]
     });
 
     if (!result.ok) {
@@ -521,12 +574,12 @@ export default function PetsVaccinesScreen() {
         <head>
           <meta charset="utf-8" />
           <style>
-            body { font-family: Arial, sans-serif; padding: 16px; color: #1f3132; }
-            h1 { margin-bottom: 8px; color: #2F5D62; }
+            body { font-family: Arial, sans-serif; padding: 16px; color: #0f1f2d; }
+            h1 { margin-bottom: 8px; color: #0f1f2d; }
             p { margin: 4px 0; }
             table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-            th, td { border: 1px solid #d9e5df; padding: 8px; text-align: left; }
-            th { background: #eef7f1; }
+            th, td { border: 1px solid #cbe4e5; padding: 8px; text-align: left; }
+            th { background: #e7f7f7; }
           </style>
         </head>
         <body>
@@ -598,6 +651,8 @@ export default function PetsVaccinesScreen() {
             <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>{t('books.clientName')}: {selectedBook.clientName}</Text>
             <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>{t('books.location')}: {selectedBook.location}</Text>
             <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>{t('books.petName')}: {selectedBook.petName}</Text>
+            <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>{t('books.petSex')}: {selectedBook.petSex === 'female' ? t('books.female') : t('books.male')}</Text>
+            <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>{t('books.petBreed')}: {selectedBook.petBreed || '-'}</Text>
             <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>{t('books.vetName')}: {selectedBook.vetName}</Text>
             <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>{t('books.ownerPhone')}: {selectedBook.ownerPhone || '-'}</Text>
             <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>{t('books.ownerEmail')}: {selectedBook.ownerEmail || '-'}</Text>
@@ -679,6 +734,18 @@ export default function PetsVaccinesScreen() {
               </TouchableOpacity>
             </View>
           ) : null}
+          {selectedBookIsPaid ? (
+            <View style={styles.card}>
+              <Text style={[styles.sectionTitle, { textAlign: getTextAlign(isRTL) }]}>{t('books.dewormingSchedule')}</Text>
+              {(selectedBook.records || []).filter((record) => record.recordType === 'deworming').map((dose, index) => (
+                <View key={dose.id || `deworm_${index}`} style={styles.doseCard}>
+                  <Text style={[styles.doseTitle, { textAlign: getTextAlign(isRTL) }]}>{t('books.deworming')} {index + 1}</Text>
+                  <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>{t('books.ageDate')}: {formatDate(dose.plannedDateIso || dose.dateIso, language)}</Text>
+                  <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>{t('books.status')}: {t('books.statusPendingDose')}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
         </ScrollView>
       </SafeAreaView>
     );
@@ -723,6 +790,15 @@ export default function PetsVaccinesScreen() {
             <FormField label={t('books.clientName')} value={clientName} onChangeText={setClientName} placeholder={language === 'ar' ? 'اسم العميل الكامل' : 'Client full name'} autoComplete="off" textContentType="none" importantForAutofill="no" />
             <FormField label={t('books.location')} value={location} onChangeText={setLocation} placeholder={language === 'ar' ? 'المدينة أو العنوان المختصر' : 'City or short address'} autoComplete="off" textContentType="none" importantForAutofill="no" />
             <FormField label={t('books.petName')} value={petName} onChangeText={setPetName} placeholder={language === 'ar' ? 'مثال: لولو' : 'Example: Lulu'} autoComplete="off" textContentType="none" importantForAutofill="no" />
+            <Text style={[styles.label, { textAlign: getTextAlign(isRTL) }]}>{t('books.petSex')}</Text>
+            <View style={[styles.inlineRow, { flexDirection: getRowDirection(isRTL), marginBottom: spacing.md }]}>
+              {['male', 'female'].map((option) => (
+                <TouchableOpacity key={option} style={[styles.smallBtn, petSex === option && styles.selectedOption]} onPress={() => setPetSex(option)}>
+                  <Text style={styles.smallBtnTxt}>{t(`books.${option}`)}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <FormField label={t('books.petBreed')} value={petBreed} onChangeText={setPetBreed} placeholder={language === 'ar' ? 'مثال: شيرازي' : 'Example: Persian'} autoComplete="off" />
             <FormField label={t('books.vetName')} value={vetName} onChangeText={setVetName} placeholder={language === 'ar' ? 'مثال: د. أحمد' : 'Example: Dr. Ahmed'} autoComplete="off" textContentType="none" importantForAutofill="no" />
             <FormField label={t('books.ownerPhone')} value={ownerPhone} onChangeText={setOwnerPhone} placeholder="07xx xxx xxxx" keyboardType="phone-pad" autoComplete="tel" textContentType="telephoneNumber" />
             <FormField label={t('books.ownerEmail')} value={ownerEmail} onChangeText={setOwnerEmail} placeholder="owner@email.com" autoCapitalize="none" keyboardType="email-address" autoComplete="email" textContentType="emailAddress" />
@@ -838,6 +914,16 @@ export default function PetsVaccinesScreen() {
             <TouchableOpacity style={styles.saveBtn} onPress={saveBook}>
               <Text style={styles.saveTxt}>{t('common.save')}</Text>
             </TouchableOpacity>
+          </View>
+          <View style={styles.card}>
+            <Text style={[styles.sectionTitle, { textAlign: getTextAlign(isRTL) }]}>{t('books.dewormingSchedule')}</Text>
+            {dewormingRows.map((row, index) => (
+              <View key={row.id} style={styles.doseCard}>
+                <Text style={[styles.doseTitle, { textAlign: getTextAlign(isRTL) }]}>{t('books.deworming')} {index + 1}</Text>
+                <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>{t('books.ageDate')}: {formatDate(row.plannedDate, language)}</Text>
+                <Text style={[styles.line, { textAlign: getTextAlign(isRTL) }]}>{t('books.status')}: {t('books.statusPendingDose')}</Text>
+              </View>
+            ))}
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -1006,16 +1092,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff'
   },
   dropdownItemActive: {
-    backgroundColor: '#E9F3EE'
+    backgroundColor: colors.accentSoft
   },
   dropdownItemTxt: {
     color: colors.text,
     fontWeight: '700'
   },
   doseCard: {
-    backgroundColor: '#F8FBF8',
+    backgroundColor: colors.surfaceMuted,
     borderWidth: 1,
-    borderColor: '#E3ECE7',
+    borderColor: colors.border,
     borderRadius: radius.md,
     padding: spacing.md,
     marginBottom: spacing.md
@@ -1040,11 +1126,16 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     paddingVertical: 11,
     alignItems: 'center',
-    backgroundColor: '#E9F3EE'
+    backgroundColor: colors.accentSoft
   },
   clearBtn: {
     flex: 0.45,
-    backgroundColor: '#F1F4F3'
+    backgroundColor: colors.surfaceMuted
+  },
+  selectedOption: {
+    backgroundColor: colors.accent,
+    borderWidth: 1,
+    borderColor: colors.primaryDark
   },
   smallBtnTxt: {
     color: colors.secondary,
@@ -1083,7 +1174,7 @@ const styles = StyleSheet.create({
   },
   backBtn: {
     borderRadius: radius.md,
-    backgroundColor: '#F1F4F3',
+    backgroundColor: colors.surfaceMuted,
     paddingVertical: 12,
     alignItems: 'center',
     marginTop: 4,
@@ -1099,7 +1190,7 @@ const styles = StyleSheet.create({
   },
   bookRow: {
     borderTopWidth: 1,
-    borderTopColor: '#EDF2EF',
+    borderTopColor: colors.border,
     paddingTop: spacing.md,
     marginTop: spacing.sm
   }

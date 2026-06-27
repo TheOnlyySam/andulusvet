@@ -1,8 +1,8 @@
-import React, { createContext, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Notifications from 'expo-notifications';
 import { getAuthBootstrap, signInWithRole, signOutUser, signUpWithRole } from '../services/authService';
 import { fetchProfile, upsertProfile } from '../services/profileService';
-import { fetchProductsFromRepository, createProductInRepository } from '../services/catalogRepository';
+import { fetchProductsFromRepository, createProductInRepository, updateProductInRepository } from '../services/catalogRepository';
 import { fetchDiscountRulesFromRepository, createDiscountRuleInRepository } from '../services/discountRepository';
 import {
   fetchVaccineBooks,
@@ -40,6 +40,7 @@ function withTimeout(promise, timeoutMs) {
 }
 
 export function AppProvider({ children }) {
+  const catalogRequestRef = useRef(0);
   const [cart, setCart] = useState([]);
   const [selectedBrand, setSelectedBrand] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -72,6 +73,7 @@ export function AppProvider({ children }) {
   }, [toast]);
 
   const refreshCatalog = useCallback(async () => {
+    const requestId = ++catalogRequestRef.current;
     setIsCatalogLoading(true);
     try {
       const [productsResult, discountsResult] = await Promise.allSettled([
@@ -79,19 +81,19 @@ export function AppProvider({ children }) {
         fetchDiscountRulesFromRepository()
       ]);
 
-      if (productsResult.status === 'fulfilled') {
+      if (productsResult.status === 'fulfilled' && requestId === catalogRequestRef.current) {
         setProducts(productsResult.value);
       } else {
         console.log('Unable to refresh products', productsResult.reason);
       }
 
-      if (discountsResult.status === 'fulfilled') {
+      if (discountsResult.status === 'fulfilled' && requestId === catalogRequestRef.current) {
         setDiscountRules(discountsResult.value);
       } else {
         console.log('Unable to refresh discount rules', discountsResult.reason);
       }
     } finally {
-      setIsCatalogLoading(false);
+      if (requestId === catalogRequestRef.current) setIsCatalogLoading(false);
     }
   }, []);
 
@@ -242,6 +244,8 @@ export function AppProvider({ children }) {
     location,
     petName,
     petType,
+    petSex,
+    petBreed,
     firstVisitDateIso,
     petBirthDateIso,
     ownerPhone,
@@ -275,6 +279,10 @@ export function AppProvider({ children }) {
         location,
         pet_name: petName,
         pet_type: petType,
+        pet_sex: petSex || '',
+        petSex: petSex || '',
+        pet_breed: petBreed || '',
+        petBreed: petBreed || '',
         first_visit_date_iso: firstVisitDateIso,
         firstVisitDateIso,
         pet_birth_date_iso: petBirthDateIso || null,
@@ -310,7 +318,7 @@ export function AppProvider({ children }) {
         await createNotification({
           title: { ar: 'طلب دفتر لقاح جديد', en: 'New digital vaccine book request' },
           message: {
-            ar: `${clientName} - ${petName} بانتظار دفع ٥,٠٠٠ د.ع`,
+            ar: `${clientName} - ${petName} بانتظار دفع 5,000 د.ع`,
             en: `${clientName} - ${petName} is awaiting IQD 5,000 payment`
           },
           audience: 'all',
@@ -383,6 +391,13 @@ export function AppProvider({ children }) {
     });
     await refreshNotifications(currentUser?.id, currentProfile?.role || 'customer');
     return created;
+  };
+
+  const updateAdminProduct = async (productId, payload) => {
+    if (!isAdmin) throw new Error('Admin access is required.');
+    const updated = await updateProductInRepository(productId, payload);
+    await refreshCatalog();
+    return updated;
   };
 
   const createAdminDiscount = async (payload) => {
@@ -526,6 +541,7 @@ export function AppProvider({ children }) {
     markVaccineBookPaid,
     VACCINE_BOOK_PRICE_IQD,
     createAdminProduct,
+    updateAdminProduct,
     createAdminDiscount,
     markAllNotificationsAsRead,
     toast,

@@ -1,5 +1,6 @@
 import React, { useContext, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from '../components/Typography';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import FormField from '../components/FormField';
@@ -95,12 +96,12 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl
   },
   heroCard: {
-    backgroundColor: '#FFF1D5',
+    backgroundColor: colors.accentSoft,
     borderRadius: radius.xl,
     padding: spacing.xl,
     marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: '#F2DCA8',
+    borderColor: colors.accent,
     ...shadows.card
   },
   heroTitle: {

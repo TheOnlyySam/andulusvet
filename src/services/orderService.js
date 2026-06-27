@@ -1,4 +1,5 @@
 import { calculateDiscounts } from './discountService';
+import { formatCurrency, toWesternDigits } from '../utils/format';
 
 export function buildCheckoutSummary(cartItems, discountRules = []) {
   return calculateDiscounts(cartItems, discountRules);
@@ -6,14 +7,13 @@ export function buildCheckoutSummary(cartItems, discountRules = []) {
 
 export function buildWhatsappOrderMessage({ language, t, cartItems, checkoutDraft, summary }) {
   const checkoutSummary = summary || buildCheckoutSummary(cartItems);
-  const locale = language === 'ar' ? 'ar-IQ' : 'en-US';
   const locationLine = checkoutDraft.district
     ? `${checkoutDraft.governorate} - ${checkoutDraft.district}`
     : checkoutDraft.governorate;
 
   const lines = cartItems.map(
     (item) =>
-      `- ${item.displayName || item.name} | ${t('cart.quantity')}: ${item.qty} | ${item.price.toLocaleString(locale)}`
+      `- ${item.displayName || item.name} | ${t('cart.quantity')}: ${item.qty} | ${formatCurrency(item.price, language)}`
   );
 
   const header = language === 'ar' ? 'طلب جديد من التطبيق' : 'New order from the app';
@@ -30,8 +30,8 @@ export function buildWhatsappOrderMessage({ language, t, cartItems, checkoutDraf
     '',
     ...lines,
     '',
-    `${t('cart.subtotal')}: ${checkoutSummary.subtotal.toLocaleString(locale)}`,
-    `${t('cart.discount')}: ${checkoutSummary.discountAmount.toLocaleString(locale)}`,
-    `${t('cart.total')}: ${checkoutSummary.total.toLocaleString(locale)}`
-  ].join('\n');
+    `${t('cart.subtotal')}: ${formatCurrency(checkoutSummary.subtotal, language)}`,
+    `${t('cart.discount')}: ${formatCurrency(checkoutSummary.discountAmount, language)}`,
+    `${t('cart.total')}: ${formatCurrency(checkoutSummary.total, language)}`
+  ].map(toWesternDigits).join('\n');
 }

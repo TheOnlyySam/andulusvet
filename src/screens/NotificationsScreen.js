@@ -1,5 +1,6 @@
 import React, { useContext } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Text } from '../components/Typography';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ScreenHeader from '../components/ScreenHeader';
 import { AppContext } from '../context/AppContext';
@@ -49,7 +50,7 @@ const styles = StyleSheet.create({
   },
   markReadBtn: {
     alignSelf: 'flex-start',
-    backgroundColor: '#EEF3F1',
+    backgroundColor: colors.surfaceMuted,
     paddingHorizontal: spacing.md,
     paddingVertical: 10,
     borderRadius: radius.pill,
