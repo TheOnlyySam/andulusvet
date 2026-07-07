@@ -7,11 +7,17 @@ import { getTextAlign } from '../utils/format';
 
 export default function FormField({ label, multiline = false, style, inputStyle, ...inputProps }) {
   const { isRTL } = useLocalization();
+  const autofillProps = {
+    autoComplete: inputProps.autoComplete ?? 'off',
+    textContentType: inputProps.textContentType ?? 'none',
+    importantForAutofill: inputProps.importantForAutofill ?? 'no'
+  };
 
   return (
     <View style={[styles.field, style]}>
       <Text style={[styles.label, { textAlign: getTextAlign(isRTL) }]}>{label}</Text>
       <TextInput
+        {...autofillProps}
         {...inputProps}
         multiline={multiline}
         style={[
