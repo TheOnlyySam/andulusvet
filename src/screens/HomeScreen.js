@@ -127,9 +127,6 @@ export default function HomeScreen() {
 
           <Text style={[styles.heroTitle, { textAlign: getTextAlign(isRTL) }]}>{t('home.heroTitle')}</Text>
           <Text style={[styles.heroSubtitle, { textAlign: getTextAlign(isRTL) }]}>{t('home.heroSubtitle')}</Text>
-          <TouchableOpacity style={styles.heroBtn} onPress={() => navigation.navigate(t('nav.books'))}>
-            <Text style={styles.heroBtnTxt}>{t('home.heroCta')}</Text>
-          </TouchableOpacity>
         </Animated.View>
 
         <TouchableOpacity
@@ -252,19 +249,6 @@ const styles = StyleSheet.create({
     fontSize: typography.body,
     marginTop: 10,
     lineHeight: 23
-  },
-  heroBtn: {
-    marginTop: spacing.lg,
-    alignSelf: 'flex-start',
-    backgroundColor: colors.accent,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: 12
-  },
-  heroBtnTxt: {
-    color: colors.secondary,
-    fontWeight: '900',
-    fontSize: typography.bodySm
   },
   sectionTitle: {
     color: colors.secondary,
