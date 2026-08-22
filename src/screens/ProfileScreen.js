@@ -6,7 +6,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import ScreenHeader from '../components/ScreenHeader';
+import LoadingIndicator from '../components/LoadingIndicator';
 import { AppContext } from '../context/AppContext';
+import { useAppFeedback } from '../context/AppFeedbackContext';
 import { APP_ROUTES } from '../constants/navigation';
 import { useLocalization } from '../context/LocalizationContext';
 import { colors, radius, shadows, spacing, typography } from '../theme';
@@ -18,7 +20,7 @@ function ActionCard({ title, subtitle, icon, onPress, tone = 'light', isRTL }) {
   const subtitleStyle = tone === 'dark' ? styles.actionSubtitleDark : styles.actionSubtitle;
 
   return (
-    <Pressable style={[styles.actionCard, toneStyle]} onPress={onPress}>
+    <Pressable style={({ pressed }) => [styles.actionCard, toneStyle, pressed && styles.cardPressed]} onPress={onPress}>
       <View style={[styles.actionHeader, { flexDirection: getRowDirection(isRTL) }]}>
         <View style={styles.iconWrap}>
           <Ionicons name={icon} size={20} color={tone === 'dark' ? '#fff' : colors.secondary} />
@@ -36,18 +38,21 @@ export default function ProfileScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const { isReady, isLoggedIn, isAdmin, currentUser, currentProfile, authSignOut } = useContext(AppContext);
   const { isRTL, t } = useLocalization();
+  const { showAlert, withLoading } = useAppFeedback();
 
   const welcomeName =
     currentProfile?.display_name || currentProfile?.username || currentUser?.email?.split('@')[0] || t('profile.guestName');
 
   const logout = async () => {
-    await authSignOut();
+    await withLoading(authSignOut, t('feedback.signingOut'));
+    showAlert(t('alerts.success'), t('profile.logoutSuccess'));
   };
 
   if (!isReady) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <ScreenHeader title={t('profile.title')} subtitle={t('common.loading')} showLanguage />
+        <ScreenHeader title={t('profile.title')} showLanguage />
+        <LoadingIndicator />
       </SafeAreaView>
     );
   }
@@ -223,6 +228,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.xl,
     padding: spacing.lg,
     ...shadows.card
+  },
+  cardPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.99 }]
   },
   actionCardLight: {
     backgroundColor: '#fff',

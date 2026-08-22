@@ -1,11 +1,13 @@
 import React, { useContext, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { Text } from '../components/Typography';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import FormField from '../components/FormField';
+import KeyboardAwareScrollView from '../components/KeyboardAwareScrollView';
 import ScreenHeader from '../components/ScreenHeader';
 import { AppContext } from '../context/AppContext';
+import { useAppFeedback } from '../context/AppFeedbackContext';
 import { APP_ROUTES } from '../constants/navigation';
 import { useLocalization } from '../context/LocalizationContext';
 import { colors, radius, shadows, spacing, typography } from '../theme';
@@ -15,26 +17,34 @@ export default function SignUpScreen() {
   const navigation = useNavigation();
   const { authSignUp } = useContext(AppContext);
   const { isRTL, t } = useLocalization();
+  const { showAlert, withLoading } = useAppFeedback();
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const submit = async () => {
-    const result = await authSignUp({ displayName, email, password });
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    const result = await withLoading(
+      () => authSignUp({ displayName, email, password }),
+      t('feedback.creatingAccount')
+    );
+    setIsSubmitting(false);
 
     if (!result.ok) {
-      Alert.alert(t('alerts.warning'), result.messageKey ? t(result.messageKey) : result.message || t('alerts.error'));
+      showAlert(t('alerts.warning'), result.messageKey ? t(result.messageKey) : result.message || t('alerts.error'));
       return;
     }
 
-    Alert.alert(t('alerts.success'), t('profile.signUpSuccess'));
+    showAlert(t('alerts.success'), t('profile.signUpSuccess'));
     navigation.goBack();
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScreenHeader title={t('profile.signUp')} subtitle={t('profile.signUpSubtitle')} showLanguage />
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <KeyboardAwareScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.heroCard}>
           <Text style={[styles.heroTitle, { textAlign: getTextAlign(isRTL) }]}>{t('profile.signUpHero')}</Text>
           <Text style={[styles.heroText, { textAlign: getTextAlign(isRTL) }]}>{t('profile.welcomeNameHint')}</Text>
@@ -65,7 +75,8 @@ export default function SignUpScreen() {
             textContentType="newPassword"
             placeholder="********"
           />
-          <Pressable style={styles.primaryButton} onPress={submit}>
+          <Pressable style={[styles.primaryButton, isSubmitting && styles.disabled]} onPress={submit} disabled={isSubmitting}>
+            {isSubmitting ? <ActivityIndicator size="small" color="#fff" /> : null}
             <Text style={styles.primaryText}>{t('profile.signUp')}</Text>
           </Pressable>
           <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate(APP_ROUTES.signIn)}>
@@ -81,7 +92,7 @@ export default function SignUpScreen() {
             </Pressable>
           </View>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }
@@ -128,8 +139,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.secondary,
     borderRadius: radius.md,
     paddingVertical: 15,
-    alignItems: 'center'
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: spacing.sm,
+    minHeight: 52
   },
+  disabled: { opacity: 0.68 },
   primaryText: {
     color: '#fff',
     fontSize: typography.button,

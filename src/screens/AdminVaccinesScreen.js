@@ -1,36 +1,47 @@
-import React, { useContext } from 'react';
-import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import React, { useContext, useState } from 'react';
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from '../components/Typography';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ScreenHeader from '../components/ScreenHeader';
+import LoadingIndicator from '../components/LoadingIndicator';
 import { AppContext } from '../context/AppContext';
+import { useAppFeedback } from '../context/AppFeedbackContext';
 import { useLocalization } from '../context/LocalizationContext';
 import { colors, radius, shadows, spacing, typography } from '../theme';
 import { formatCurrency, formatDate, getTextAlign } from '../utils/format';
 
 export default function AdminVaccinesScreen() {
-  const { vaccineBooks, isBooksLoading, markVaccineBookPaid, VACCINE_BOOK_PRICE_IQD } = useContext(AppContext);
+  const { currentUser, currentProfile, vaccineBooks, isBooksLoading, refreshVaccineBooks, markVaccineBookPaid, VACCINE_BOOK_PRICE_IQD } = useContext(AppContext);
   const { language, isRTL, t } = useLocalization();
+  const { showAlert, withLoading } = useAppFeedback();
+  const [savingBookId, setSavingBookId] = useState(null);
 
   const markPaid = async (bookId) => {
-    const result = await markVaccineBookPaid(bookId);
+    if (savingBookId) return;
+    setSavingBookId(bookId);
+    const result = await withLoading(() => markVaccineBookPaid(bookId), t('feedback.saving'));
+    setSavingBookId(null);
     if (!result.ok) {
-      Alert.alert(t('alerts.error'), result.message || t('alerts.error'));
+      showAlert(t('alerts.error'), result.message || t('alerts.error'));
       return;
     }
-    Alert.alert(t('alerts.success'), t('admin.requestPaid'));
+    showAlert(t('alerts.success'), t('admin.requestPaid'));
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScreenHeader title={t('admin.vaccinesTitle')} subtitle={t('admin.vaccinesSubtitle')} />
-      <ScrollView contentContainerStyle={styles.content}>
-        {isBooksLoading ? <Text style={[styles.emptyText, { textAlign: getTextAlign(isRTL) }]}>{t('common.loading')}</Text> : null}
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={isBooksLoading} onRefresh={() => refreshVaccineBooks(currentUser?.id, currentProfile?.role || 'admin')} tintColor={colors.secondary} colors={[colors.secondary]} />}
+      >
+        {isBooksLoading ? <LoadingIndicator compact /> : null}
         {!isBooksLoading && !vaccineBooks.length ? <Text style={[styles.emptyText, { textAlign: getTextAlign(isRTL) }]}>{t('admin.noVaccines')}</Text> : null}
         {vaccineBooks.map((book) => (
           <View key={book.id} style={styles.card}>
             <Text style={[styles.titleText, { textAlign: getTextAlign(isRTL) }]}>{book.client_name || book.clientName}</Text>
             <Text style={[styles.lineText, { textAlign: getTextAlign(isRTL) }]}>{t('books.petName')}: {book.pet_name || book.petName}</Text>
+            <Text style={[styles.lineText, { textAlign: getTextAlign(isRTL) }]}>{t('books.animalCategory')}: {book.petCategory || book.pet_category || book.petType || book.pet_type || '-'}</Text>
             <Text style={[styles.lineText, { textAlign: getTextAlign(isRTL) }]}>{t('books.location')}: {book.location}</Text>
             <Text style={[styles.lineText, { textAlign: getTextAlign(isRTL) }]}>{t('books.vetName')}: {book.vet_name || book.vetName}</Text>
             <Text style={[styles.lineText, { textAlign: getTextAlign(isRTL) }]}>{t('books.firstVisitDate')}: {formatDate(book.first_visit_date_iso || book.firstVisitDateIso, language)}</Text>
@@ -44,7 +55,8 @@ export default function AdminVaccinesScreen() {
               {t('books.paymentStatus')}: {(book.paymentStatus || book.payment_status) === 'paid' ? t('books.statusPaid') : t('books.statusUnpaid')}
             </Text>
             {(book.paymentStatus || book.payment_status) !== 'paid' ? (
-              <TouchableOpacity style={styles.approveBtn} onPress={() => markPaid(book.id)}>
+              <TouchableOpacity style={[styles.approveBtn, savingBookId === book.id && styles.disabled]} onPress={() => markPaid(book.id)} disabled={Boolean(savingBookId)}>
+                {savingBookId === book.id ? <ActivityIndicator size="small" color="#fff" /> : null}
                 <Text style={styles.approveBtnTxt}>{t('admin.markPaid')}</Text>
               </TouchableOpacity>
             ) : null}
@@ -63,6 +75,7 @@ const styles = StyleSheet.create({
   titleText: { color: colors.secondary, fontSize: typography.h3, fontWeight: '900' },
   lineText: { color: colors.text, marginTop: 6, fontSize: typography.bodySm },
   statusText: { color: colors.secondary, marginTop: spacing.sm, fontSize: typography.bodySm, fontWeight: '800' },
-  approveBtn: { marginTop: spacing.sm, borderRadius: radius.md, backgroundColor: colors.secondary, alignItems: 'center', paddingVertical: 11 },
+  approveBtn: { minHeight: 44, marginTop: spacing.sm, borderRadius: radius.md, backgroundColor: colors.secondary, flexDirection: 'row', gap: spacing.sm, alignItems: 'center', justifyContent: 'center', paddingVertical: 11 },
+  disabled: { opacity: 0.68 },
   approveBtnTxt: { color: '#fff', fontWeight: '900', fontSize: typography.caption }
 });

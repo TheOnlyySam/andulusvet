@@ -1,15 +1,16 @@
 import React, { useContext } from 'react';
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from '../components/Typography';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ScreenHeader from '../components/ScreenHeader';
+import LoadingIndicator from '../components/LoadingIndicator';
 import { AppContext } from '../context/AppContext';
 import { useLocalization } from '../context/LocalizationContext';
 import { colors, radius, shadows, spacing, typography } from '../theme';
 import { formatDate, getTextAlign, pickLocalizedText } from '../utils/format';
 
 export default function NotificationsScreen() {
-  const { notifications, markAllNotificationsAsRead } = useContext(AppContext);
+  const { currentUser, currentProfile, notifications, isNotificationsLoading, refreshNotifications, markAllNotificationsAsRead } = useContext(AppContext);
   const { language, isRTL, t } = useLocalization();
 
   return (
@@ -18,8 +19,13 @@ export default function NotificationsScreen() {
       <TouchableOpacity style={styles.markReadBtn} onPress={markAllNotificationsAsRead}>
         <Text style={styles.markReadText}>{t('notifications.markAllRead')}</Text>
       </TouchableOpacity>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {!notifications.length ? (
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={isNotificationsLoading} onRefresh={() => refreshNotifications(currentUser?.id, currentProfile?.role || 'customer')} tintColor={colors.secondary} colors={[colors.secondary]} />}
+      >
+        {isNotificationsLoading && !notifications.length ? <LoadingIndicator /> : null}
+        {!isNotificationsLoading && !notifications.length ? (
           <View style={styles.emptyCard}>
             <Text style={[styles.emptyText, { textAlign: getTextAlign(isRTL) }]}>{t('notifications.empty')}</Text>
           </View>

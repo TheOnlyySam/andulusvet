@@ -111,7 +111,7 @@ android {
 
     namespace 'com.andulusvet.mobile'
     defaultConfig {
-        applicationId 'com.andulusvet.client'
+        applicationId 'com.andalus.vet'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

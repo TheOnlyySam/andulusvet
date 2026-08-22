@@ -59,6 +59,7 @@ Expo will expose these to the app because they use the `EXPO_PUBLIC_` prefix.
 - `location text not null`
 - `pet_name text not null`
 - `pet_type text not null`
+- `pet_category text`
 - `first_visit_date_iso timestamptz not null`
 - `pet_birth_date_iso timestamptz`
 - `owner_phone text`
@@ -100,6 +101,25 @@ Expo will expose these to the app because they use the `EXPO_PUBLIC_` prefix.
 - `audience text not null default 'all'`
 - `is_read boolean not null default false`
 - `created_at timestamptz default now()`
+
+### `payments`
+- `id uuid primary key default gen_random_uuid()`
+- `request_id uuid unique not null`
+- `qi_payment_id text unique`
+- `user_id uuid references auth.users(id) on delete set null`
+- `purpose text not null` (recommended values: `vaccine_book`, `cart`)
+- `vaccine_book_id uuid references vaccine_books(id) on delete set null`
+- `amount_iqd numeric not null`
+- `currency text not null default 'IQD'`
+- `status text not null default 'CREATED_LOCAL'`
+- `form_url text`
+- `cart_payload jsonb`
+- `checkout_payload jsonb`
+- `gateway_payload jsonb`
+- `webhook_payload jsonb`
+- `paid_at timestamptz`
+- `created_at timestamptz default now()`
+- `updated_at timestamptz default now()`
 
 ## Suggested storage buckets
 
@@ -145,6 +165,10 @@ Expo will expose these to the app because they use the `EXPO_PUBLIC_` prefix.
 - admins can read all notifications
 - only admins can insert broadcast notifications
 
+### `payments`
+- customers can read their own payments
+- payment creation, webhook updates, and gateway status sync are handled by Supabase Edge Functions using the service role key
+
 ## Notes about the current app wiring
 
 - Products are normalized into the existing localized UI shape after fetching from Supabase.
@@ -162,3 +186,39 @@ alter table public.vaccine_books add column if not exists pet_breed text;
 alter table public.booking_records add column if not exists record_type text not null default 'vaccine';
 alter table public.booking_records add column if not exists status text not null default 'pending';
 ```
+
+# Qi payment gateway testing
+
+Apply the migration in `supabase/migrations/202608220001_qi_payments.sql`, then deploy these Edge Functions:
+
+```bash
+supabase functions deploy qi-create-payment
+supabase functions deploy qi-payment-webhook --no-verify-jwt
+supabase functions deploy qi-payment-sync
+supabase functions deploy qi-payment-finish --no-verify-jwt
+```
+
+Recommended function secrets for sandbox testing:
+
+```bash
+supabase secrets set QI_GATEWAY_BASE_URL=https://uat-sandbox-3ds-api.qi.iq/api/v1
+supabase secrets set QI_GATEWAY_USERNAME=paymentgatewaytest
+supabase secrets set QI_GATEWAY_PASSWORD=WHaNFE5C3qlChqNbAzH4
+supabase secrets set QI_GATEWAY_TERMINAL_ID=237984
+```
+
+Optional production/security settings:
+
+```bash
+supabase secrets set QI_GATEWAY_PUBLIC_KEY='-----BEGIN PUBLIC KEY-----...'
+supabase secrets set QI_FINISH_PAYMENT_URL=https://your-domain.example/payment-finish
+supabase secrets set QI_NOTIFICATION_URL=https://your-project.supabase.co/functions/v1/qi-payment-webhook
+```
+
+Flow:
+- vaccine books always create a 5,000 IQD payment
+- cart checkout creates a Qi payment for the current cart total
+- Qi returns a hosted `formUrl`, which the app opens
+- `qi-payment-webhook` marks successful payments as `SUCCESS`
+- when a successful payment is for a vaccine book, the function updates `vaccine_books.payment_status` to `paid`, sets `paid_at`, and approves/unlocks the book
+- the in-app "Check payment status" button calls `qi-payment-sync` as a manual fallback while testing

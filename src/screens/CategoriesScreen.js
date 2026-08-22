@@ -1,5 +1,5 @@
 import React, { useContext, useMemo } from 'react';
-import { ImageBackground, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ImageBackground, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from '../components/Typography';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -35,7 +35,9 @@ export default function CategoriesScreen() {
     setSelectedAnimalType,
     setSelectedFoodFocus,
     setSelectedLifeStage,
-    clearCatalogFilters
+    clearCatalogFilters,
+    isCatalogLoading,
+    refreshCatalog
   } = useContext(AppContext);
 
   const visibleCategories = useMemo(() => {
@@ -80,7 +82,11 @@ export default function CategoriesScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={isCatalogLoading} onRefresh={refreshCatalog} tintColor={colors.secondary} colors={[colors.secondary]} />}
+      >
         <ScreenHeader title={t('categories.title')} subtitle={t('categories.subtitle')} />
 
         <View style={styles.heroCard}>

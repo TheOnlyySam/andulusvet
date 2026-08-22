@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ProductCard from '../components/ProductCard';
+import LoadingIndicator from '../components/LoadingIndicator';
 import ScreenHeader from '../components/ScreenHeader';
 import { Text } from '../components/Typography';
 import { AppContext } from '../context/AppContext';
@@ -165,10 +166,10 @@ export default function ShopScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          <View style={styles.emptyCard}>
+          isCatalogLoading ? <LoadingIndicator /> : <View style={styles.emptyCard}>
             <View style={styles.emptyIcon}><Ionicons name="cube-outline" size={30} color={colors.secondary} /></View>
-            <Text style={styles.emptyTitle}>{isCatalogLoading ? t('common.loading') : t('shop.empty')}</Text>
-            {!isCatalogLoading ? <Pressable style={styles.retryButton} onPress={refreshCatalog}><Text style={styles.retryText}>{language === 'ar' ? 'إعادة المحاولة' : 'Try again'}</Text></Pressable> : null}
+            <Text style={styles.emptyTitle}>{t('shop.empty')}</Text>
+            <Pressable style={styles.retryButton} onPress={refreshCatalog}><Text style={styles.retryText}>{language === 'ar' ? 'إعادة المحاولة' : 'Try again'}</Text></Pressable>
           </View>
         }
       />

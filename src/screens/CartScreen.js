@@ -1,11 +1,14 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
-import { Alert, Image, KeyboardAvoidingView, Linking, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, Linking, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../components/Typography';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import FormField from '../components/FormField';
+import KeyboardAwareScrollView from '../components/KeyboardAwareScrollView';
 import ScreenHeader from '../components/ScreenHeader';
 import { AppContext } from '../context/AppContext';
+import { useAppFeedback } from '../context/AppFeedbackContext';
 import { useLocalization } from '../context/LocalizationContext';
 import { addSavedLocation, loadCheckoutPreferences, removeSavedLocation, saveCheckoutDraft } from '../services/checkoutService';
 import { buildWhatsappOrderMessage } from '../services/orderService';
@@ -15,9 +18,11 @@ import { formatCurrency, getRowDirection, getTextAlign, pickLocalizedText } from
 const WHATSAPP_PHONE = '9647801730506';
 
 export default function CartScreen() {
-  const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
   const { language, isRTL, t } = useLocalization();
-  const { cart, cartSummary, discountRules, changeQty, removeFromCart, clearCart } = useContext(AppContext);
+  const { showAlert, withLoading } = useAppFeedback();
+  const Alert = { alert: showAlert };
+  const { cart, cartSummary, discountRules, changeQty, removeFromCart, clearCart, startCartPayment, syncPaymentStatus } = useContext(AppContext);
 
   const [customerName, setCustomerName] = useState('');
   const [phoneNumber1, setPhoneNumber1] = useState('');
@@ -28,7 +33,10 @@ export default function CartScreen() {
   const [placeOfResidence, setPlaceOfResidence] = useState('');
   const [savedLocations, setSavedLocations] = useState([]);
   const [isCheckoutDraftReady, setIsCheckoutDraftReady] = useState(false);
-  const bottomContentOffset = insets.bottom + 96;
+  const [isPaymentLoading, setIsPaymentLoading] = useState(false);
+  const [lastPaymentId, setLastPaymentId] = useState(null);
+  const bottomContentOffset = spacing.md;
+  const formatIqd = (value) => `${formatCurrency(value, language)} ${t('cart.iqd')}`;
 
   const customerDraft = useMemo(
     () => ({
@@ -147,6 +155,85 @@ export default function CartScreen() {
     Alert.alert(t('alerts.success'), t('alerts.orderOpened'));
   };
 
+  const getValidatedCheckoutDraft = () => {
+    if (!cart.length) {
+      Alert.alert(t('alerts.emptyCart'), t('cart.emptyMessage'));
+      return null;
+    }
+
+    if (!customerName.trim() || !phoneNumber1.trim() || !governorate.trim() || !district.trim() || !closestLandmark.trim() || !placeOfResidence.trim()) {
+      Alert.alert(t('alerts.missingData'), t('cart.missingCheckout'));
+      return null;
+    }
+
+    return {
+      customerName: customerName.trim(),
+      phoneNumber1: phoneNumber1.trim(),
+      phoneNumber2: phoneNumber2.trim(),
+      governorate: governorate.trim(),
+      district: district.trim(),
+      closestLandmark: closestLandmark.trim(),
+      placeOfResidence: placeOfResidence.trim()
+    };
+  };
+
+  const payCart = async () => {
+    const checkout = getValidatedCheckoutDraft();
+    if (!checkout) return;
+
+    setIsPaymentLoading(true);
+    try {
+      const result = await withLoading(() => startCartPayment({
+        checkout,
+        locale: language === 'ar' ? 'ar_IQ' : 'en_US'
+      }), t('feedback.preparingPayment'));
+
+      if (!result.ok) {
+        Alert.alert(t('alerts.error'), result.messageKey ? t(result.messageKey) : result.message || t('alerts.error'));
+        return;
+      }
+
+      setLastPaymentId(result.payment?.id || null);
+      if (result.formUrl) {
+        await Linking.openURL(result.formUrl);
+        Alert.alert(t('alerts.success'), t('alerts.paymentOpened'));
+      }
+    } finally {
+      setIsPaymentLoading(false);
+    }
+  };
+
+  const checkCartPayment = async () => {
+    if (!lastPaymentId) {
+      Alert.alert(t('alerts.warning'), t('cart.noPaymentToCheck'));
+      return;
+    }
+
+    setIsPaymentLoading(true);
+    try {
+      const result = await withLoading(
+        () => syncPaymentStatus({ paymentId: lastPaymentId }),
+        t('feedback.checkingPayment')
+      );
+      if (!result.ok) {
+        Alert.alert(t('alerts.error'), result.messageKey ? t(result.messageKey) : result.message || t('alerts.error'));
+        return;
+      }
+
+      const status = String(result.payment?.status || result.gateway?.status || '').toUpperCase();
+      if (status === 'SUCCESS') {
+        clearCart();
+        showAlert(t('alerts.success'), t('alerts.paymentSuccess'));
+      } else if (['PENDING', 'INITIATED', 'CREATED'].includes(status)) {
+        showAlert(t('alerts.warning'), t('alerts.paymentPending'));
+      } else {
+        showAlert(t('alerts.error'), t('alerts.paymentFailed'));
+      }
+    } finally {
+      setIsPaymentLoading(false);
+    }
+  };
+
   const saveCustomerInfo = async () => {
     await saveCheckoutDraft(customerDraft);
     Alert.alert(t('alerts.success'), t('cart.customerSaved'));
@@ -185,19 +272,12 @@ export default function CartScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.keyboardWrap}
-      >
-        <ScreenHeader title={t('cart.title')} subtitle={t('cart.subtitle')} />
+      <ScreenHeader title={t('cart.title')} subtitle={t('cart.subtitle')} />
 
-        <ScrollView
+        <KeyboardAwareScrollView
           style={styles.scroll}
           contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomContentOffset }]}
           showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          automaticallyAdjustKeyboardInsets
         >
           {!cart.length ? (
             <View style={styles.emptyCard}>
@@ -225,14 +305,14 @@ export default function CartScreen() {
                     <Ionicons name="trash-outline" size={18} color={colors.danger} />
                   </TouchableOpacity>
                 </View>
-                <Text style={[styles.unitPrice, { textAlign: getTextAlign(isRTL) }]}>{formatCurrency(item.price, language)} × {item.qty}</Text>
+                <Text style={[styles.unitPrice, { textAlign: getTextAlign(isRTL) }]}>{formatIqd(item.price)} × {item.qty}</Text>
                 <View style={[styles.itemBottomRow, { flexDirection: getRowDirection(isRTL) }]}>
                   <View style={[styles.stepper, { flexDirection: getRowDirection(isRTL) }]}>
                     <TouchableOpacity style={styles.qtyBtn} onPress={() => changeQty(item.id, -1)}><Ionicons name="remove" size={17} color={colors.secondary} /></TouchableOpacity>
                     <Text style={styles.qtyValue}>{item.qty}</Text>
                     <TouchableOpacity style={styles.qtyBtnActive} onPress={() => changeQty(item.id, 1)}><Ionicons name="add" size={17} color="#fff" /></TouchableOpacity>
                   </View>
-                  <Text style={styles.price}>{formatCurrency(item.price * item.qty, language)}</Text>
+                  <Text style={styles.price}>{formatIqd(item.price * item.qty)}</Text>
                 </View>
               </View>
             </View>
@@ -246,17 +326,23 @@ export default function CartScreen() {
             <View style={styles.summaryDivider} />
             <View style={[styles.summaryRow, { flexDirection: getRowDirection(isRTL) }]}>
               <Text style={styles.summaryLabel}>{t('cart.subtotal')}</Text>
-              <Text style={styles.summaryValue}>{formatCurrency(cartSummary.subtotal, language)}</Text>
+              <Text style={styles.summaryValue}>{formatIqd(cartSummary.subtotal)}</Text>
             </View>
             <View style={[styles.summaryRow, { flexDirection: getRowDirection(isRTL) }]}>
               <Text style={styles.summaryLabel}>{t('cart.discount')}</Text>
-              <Text style={styles.summaryValue}>{formatCurrency(cartSummary.discountAmount, language)}</Text>
+              <Text style={styles.summaryValue}>{formatIqd(cartSummary.discountAmount)}</Text>
+            </View>
+            <View style={[styles.summaryRow, { flexDirection: getRowDirection(isRTL) }]}>
+              <Text style={styles.summaryLabel}>{t('cart.deliveryFee')}</Text>
+              <Text style={styles.summaryValue}>
+                + {formatIqd(cartSummary.deliveryFee)}
+              </Text>
             </View>
             {discountHint ? <Text style={[styles.discountHint, { textAlign: getTextAlign(isRTL) }]}>{discountHint}</Text> : null}
             <View style={styles.summaryDivider} />
             <View style={[styles.summaryRow, styles.totalRow, { flexDirection: getRowDirection(isRTL) }]}>
               <Text style={styles.totalLabel}>{t('cart.total')}</Text>
-              <Text style={styles.totalValue}>{formatCurrency(cartSummary.total, language)}</Text>
+              <Text style={styles.totalValue}>{formatIqd(cartSummary.total)}</Text>
             </View>
           </View>
 
@@ -339,19 +425,28 @@ export default function CartScreen() {
               </View>
             ) : null}
           </View>
-          <View style={styles.footer}>
+          <View style={[styles.footer, { marginBottom: tabBarHeight + spacing.xl }]}>
             <Text style={[styles.footerTitle, { textAlign: getTextAlign(isRTL) }]}>{t('cart.readyTitle')}</Text>
             <Text style={[styles.footerSubtitle, { textAlign: getTextAlign(isRTL) }]}>{t('cart.readySubtitle')}</Text>
             <TouchableOpacity style={styles.reserveBtn} onPress={reserveOrder}>
               <Ionicons name="logo-whatsapp" size={21} color="#fff" />
               <Text style={styles.reserveTxt}>{t('cart.sendWhatsapp')}</Text>
             </TouchableOpacity>
+            <TouchableOpacity style={[styles.payBtn, isPaymentLoading ? styles.disabledBtn : null]} onPress={payCart} disabled={isPaymentLoading}>
+              {isPaymentLoading ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="card-outline" size={21} color="#fff" />}
+              <Text style={styles.reserveTxt}>{isPaymentLoading ? t('cart.paymentWorking') : t('cart.payWithQi')}</Text>
+            </TouchableOpacity>
+            {lastPaymentId ? (
+              <TouchableOpacity style={styles.checkPaymentBtn} onPress={checkCartPayment} disabled={isPaymentLoading}>
+                <Ionicons name="refresh-outline" size={18} color={colors.secondary} />
+                <Text style={styles.checkPaymentTxt}>{t('cart.checkPayment')}</Text>
+              </TouchableOpacity>
+            ) : null}
             <TouchableOpacity onPress={clearCart}>
               <Text style={styles.clearTxt}>{t('cart.clearCart')}</Text>
             </TouchableOpacity>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }
@@ -644,5 +739,9 @@ const styles = StyleSheet.create({
   formTitle: { color: colors.secondary, fontWeight: '900', fontSize: typography.h3, marginBottom: 0 },
   ghostBtn: { flex: 1, borderWidth: 1, borderColor: colors.secondary, borderRadius: radius.md, alignItems: 'center', paddingVertical: 12, backgroundColor: '#fff' },
   footer: { backgroundColor: colors.accentSoft, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, padding: spacing.lg },
-  reserveBtn: { minHeight: 52, borderRadius: radius.md, backgroundColor: '#1F9D63', flexDirection: 'row', gap: 8, justifyContent: 'center', alignItems: 'center', paddingHorizontal: spacing.md }
+  reserveBtn: { minHeight: 52, borderRadius: radius.md, backgroundColor: '#1F9D63', flexDirection: 'row', gap: 8, justifyContent: 'center', alignItems: 'center', paddingHorizontal: spacing.md },
+  payBtn: { minHeight: 52, borderRadius: radius.md, backgroundColor: colors.secondary, flexDirection: 'row', gap: 8, justifyContent: 'center', alignItems: 'center', paddingHorizontal: spacing.md, marginTop: spacing.sm },
+  disabledBtn: { opacity: 0.65 },
+  checkPaymentBtn: { minHeight: 46, borderRadius: radius.md, borderWidth: 1, borderColor: colors.secondary, backgroundColor: '#fff', flexDirection: 'row', gap: 7, justifyContent: 'center', alignItems: 'center', paddingHorizontal: spacing.md, marginTop: spacing.sm },
+  checkPaymentTxt: { color: colors.secondary, fontWeight: '900', fontSize: typography.bodySm }
 });

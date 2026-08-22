@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { Platform, StatusBar, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Platform, StatusBar, StyleSheet, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppProvider, AppContext } from './src/context/AppContext';
 import { LocalizationProvider, useLocalization } from './src/context/LocalizationContext';
+import { AppFeedbackProvider } from './src/context/AppFeedbackContext';
 import { APP_ROUTES } from './src/constants/navigation';
 import HomeScreen from './src/screens/HomeScreen';
 import ShopScreen from './src/screens/ShopScreen';
@@ -29,6 +30,7 @@ import AdminVaccinesScreen from './src/screens/AdminVaccinesScreen';
 import ToastBanner from './src/components/ToastBanner';
 import { Text } from './src/components/Typography';
 import { colors, radius, shadows } from './src/theme';
+import { localizeDigits } from './src/utils/format';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -37,32 +39,61 @@ const ARABIC_FONT_BOLD = 'GESSUniqueBold';
 
 function AppContent() {
   const [fontsLoaded, fontError] = useFonts({
-    [ARABIC_FONT_LIGHT]: require('./assets/branding/GE SS Unique Light.otf'),
-    [ARABIC_FONT_BOLD]: require('./assets/branding/GE SS Unique Bold.otf')
+    [ARABIC_FONT_LIGHT]: require('./assets/branding/ge-ss-unique-light.otf'),
+    [ARABIC_FONT_BOLD]: require('./assets/branding/ge-ss-unique-bold.otf')
   });
 
-  if (!fontsLoaded && !fontError) {
-    return null;
+  if (fontError) {
+    throw fontError;
+  }
+
+  if (!fontsLoaded) {
+    return (
+      <View style={styles.bootScreen}>
+        <ActivityIndicator size="large" color={colors.secondary} />
+      </View>
+    );
   }
 
   return (
     <AppProvider>
       <SafeAreaProvider>
-        <View style={styles.root}>
-          <StatusBar
-            barStyle={Platform.OS === 'ios' ? 'dark-content' : 'default'}
-            backgroundColor={colors.background}
-          />
-          <AppShell />
-        </View>
+        <AppFeedbackProvider>
+          <View style={styles.root}>
+            <StatusBar
+              barStyle="dark-content"
+              backgroundColor={colors.background}
+            />
+            <AppStartupGate />
+          </View>
+        </AppFeedbackProvider>
       </SafeAreaProvider>
     </AppProvider>
   );
 }
 
+function AppStartupGate() {
+  const { isReady } = useContext(AppContext);
+  const { t } = useLocalization();
+
+  if (!isReady) {
+    return (
+      <View style={styles.bootScreen}>
+        <View style={styles.bootMark}>
+          <ActivityIndicator size="large" color={colors.secondary} />
+        </View>
+        <Text style={styles.bootTitle}>{t('common.appName')}</Text>
+        <Text style={styles.bootText}>{t('common.loading')}</Text>
+      </View>
+    );
+  }
+
+  return <AppShell />;
+}
+
 function AppTabs() {
   const insets = useSafeAreaInsets();
-  const { t, isRTL } = useLocalization();
+  const { language, t, isRTL } = useLocalization();
   const { cartCount, toast } = useContext(AppContext);
 
   const routeNameByKey = {
@@ -140,7 +171,7 @@ function AppTabs() {
           name={routeNameByKey.cart}
           component={CartScreen}
           options={{
-            tabBarBadge: cartCount ? cartCount : undefined,
+            tabBarBadge: cartCount ? localizeDigits(cartCount, language) : undefined,
             tabBarBadgeStyle: {
               backgroundColor: colors.accent,
               color: colors.secondary,
@@ -171,7 +202,13 @@ function AppShell() {
 
   return (
     <NavigationContainer theme={navTheme}>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: false,
+          animation: Platform.OS === 'android' ? 'fade_from_bottom' : 'default',
+          contentStyle: { backgroundColor: colors.background }
+        }}
+      >
         <Stack.Screen name={APP_ROUTES.tabs} component={AppTabs} />
         <Stack.Screen name={APP_ROUTES.signIn} component={SignInScreen} />
         <Stack.Screen name={APP_ROUTES.signUp} component={SignUpScreen} />
@@ -201,5 +238,31 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: colors.background
+  },
+  bootScreen: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background,
+    padding: 24
+  },
+  bootMark: {
+    width: 72,
+    height: 72,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accentSoft,
+    marginBottom: 16
+  },
+  bootTitle: {
+    color: colors.secondary,
+    fontSize: 24,
+    fontWeight: '900'
+  },
+  bootText: {
+    color: colors.textSoft,
+    fontSize: 14,
+    marginTop: 8
   }
 });

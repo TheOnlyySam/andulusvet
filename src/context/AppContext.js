@@ -13,6 +13,7 @@ import {
 } from '../services/bookingRepository';
 import { createNotification, fetchNotifications, markNotificationsRead } from '../services/notificationService';
 import { calculateDiscounts } from '../services/discountService';
+import { createCartQiPayment, createVaccineBookQiPayment, syncQiPaymentStatus } from '../services/paymentService';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -126,6 +127,15 @@ export function AppProvider({ children }) {
       setIsBooksLoading(false);
     }
   }, []);
+
+  const refreshRemoteData = useCallback(async () => {
+    const role = currentProfile?.role || 'customer';
+    await Promise.all([
+      refreshCatalog(),
+      refreshNotifications(currentUser?.id, role),
+      refreshVaccineBooks(currentUser?.id, role)
+    ]);
+  }, [currentProfile?.role, currentUser?.id, refreshCatalog, refreshNotifications, refreshVaccineBooks]);
 
   const hydrateUserState = useCallback(async (user) => {
     if (!user) {
@@ -244,6 +254,7 @@ export function AppProvider({ children }) {
     location,
     petName,
     petType,
+    petCategory,
     petSex,
     petBreed,
     firstVisitDateIso,
@@ -279,6 +290,7 @@ export function AppProvider({ children }) {
         location,
         pet_name: petName,
         pet_type: petType,
+        pet_category: petCategory || petType,
         pet_sex: petSex || '',
         petSex: petSex || '',
         pet_breed: petBreed || '',
@@ -321,9 +333,10 @@ export function AppProvider({ children }) {
             ar: `${clientName} - ${petName} بانتظار دفع 5,000 د.ع`,
             en: `${clientName} - ${petName} is awaiting IQD 5,000 payment`
           },
-          audience: 'all',
+          audience: 'user',
           type: 'booking',
-          is_read: false
+          is_read: false,
+          user_id: currentUser.id
         });
       }
       await refreshVaccineBooks(currentUser.id, currentProfile?.role || 'customer');
@@ -391,6 +404,74 @@ export function AppProvider({ children }) {
     });
     await refreshNotifications(currentUser?.id, currentProfile?.role || 'customer');
     return created;
+  };
+
+  const startVaccineBookPayment = async ({ book, locale }) => {
+    if (!currentUser?.id) {
+      return { ok: false, messageKey: 'alerts.requiredLogin' };
+    }
+
+    try {
+      const data = await createVaccineBookQiPayment({
+        vaccineBookId: book.id,
+        locale,
+        customerInfo: {
+          firstName: book.clientName || book.client_name || currentProfile?.displayName || '',
+          phone: book.ownerPhone || book.owner_phone || '',
+          email: book.ownerEmail || book.owner_email || currentUser?.email || '',
+          accountId: currentUser.id,
+          city: book.location || ''
+        }
+      });
+      await refreshVaccineBooks(currentUser.id, currentProfile?.role || 'customer');
+      return { ok: true, ...data };
+    } catch (error) {
+      return { ok: false, message: error.message };
+    }
+  };
+
+  const startCartPayment = async ({ checkout, locale }) => {
+    if (!currentUser?.id) {
+      return { ok: false, messageKey: 'alerts.requiredLogin' };
+    }
+
+    try {
+      const data = await createCartQiPayment({
+        amountIqd: cartSummary.total,
+        cartItems: cart.map((item) => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          qty: item.qty
+        })),
+        checkout,
+        locale,
+        customerInfo: {
+          firstName: checkout.customerName || currentProfile?.displayName || '',
+          phone: checkout.phoneNumber1 || '',
+          email: currentUser?.email || '',
+          accountId: currentUser.id,
+          city: checkout.governorate || ''
+        }
+      });
+      return { ok: true, ...data };
+    } catch (error) {
+      return { ok: false, message: error.message };
+    }
+  };
+
+  const syncPaymentStatus = async ({ paymentId, vaccineBookId }) => {
+    if (!currentUser?.id) {
+      return { ok: false, messageKey: 'alerts.requiredLogin' };
+    }
+
+    try {
+      const data = await syncQiPaymentStatus({ paymentId, vaccineBookId });
+      await refreshVaccineBooks(currentUser.id, currentProfile?.role || 'customer');
+      return { ok: true, ...data };
+    } catch (error) {
+      return { ok: false, message: error.message };
+    }
   };
 
   const updateAdminProduct = async (productId, payload) => {
@@ -535,10 +616,14 @@ export function AppProvider({ children }) {
     refreshCatalog,
     refreshNotifications,
     refreshVaccineBooks,
+    refreshRemoteData,
     createVaccineBook,
     updateVaccineBookRecords,
     approveVaccineBook,
     markVaccineBookPaid,
+    startVaccineBookPayment,
+    startCartPayment,
+    syncPaymentStatus,
     VACCINE_BOOK_PRICE_IQD,
     createAdminProduct,
     updateAdminProduct,

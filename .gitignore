@@ -1,4 +1,30 @@
-.expo/
+# Dependencies
+node_modules/
 
+# Expo and generated bundles
+.expo/
+.expo-export-check/
+dist/
+release/
+*.aab
+*.apk
+
+# Local environment and service state
 .env
-.env.example
+.env.*
+!.env.example
+supabase/.temp/
+
+# Android build output and local credentials
+android/.gradle/
+android/**/build/
+android/local.properties
+*.keystore
+*.jks
+*.der
+
+# Local tooling
+*.log
+.DS_Store
+.idea/
+.vscode/

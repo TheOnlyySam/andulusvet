@@ -69,7 +69,7 @@ export const shadows = {
 export const fontFamily = {
   arabicLight: 'GESSUniqueLight',
   arabicBold: 'GESSUniqueBold',
-  regular: 'System',
-  medium: 'System',
-  bold: 'System'
+  regular: 'GESSUniqueLight',
+  medium: 'GESSUniqueBold',
+  bold: 'GESSUniqueBold'
 };

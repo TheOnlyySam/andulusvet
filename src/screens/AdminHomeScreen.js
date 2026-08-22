@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,7 +13,7 @@ import { getRowDirection, getTextAlign } from '../utils/format';
 
 export default function AdminHomeScreen() {
   const navigation = useNavigation();
-  const { isAdmin, products, discountRules, vaccineBooks } = useContext(AppContext);
+  const { isAdmin, products, discountRules, vaccineBooks, isCatalogLoading, isBooksLoading, refreshRemoteData } = useContext(AppContext);
   const { language, isRTL, t } = useLocalization();
 
   const cards = [
@@ -27,7 +27,11 @@ export default function AdminHomeScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={isCatalogLoading || isBooksLoading} onRefresh={refreshRemoteData} tintColor={colors.secondary} colors={[colors.secondary]} />}
+      >
         <ScreenHeader title={t('admin.title')} subtitle={t('admin.subtitle')} />
         <View style={styles.hero}>
           <View style={styles.heroGlow} />

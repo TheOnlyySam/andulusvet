@@ -16,7 +16,7 @@ export default function BrandLogo({ compact = false }) {
       />
       <View>
         <Text style={[styles.title, compact && styles.titleCompact]}>
-          {language === 'ar' ? 'مجموعة الأندلس البيطرية' : 'Andalus'}
+          {language === 'ar' ? 'الاندلس' : 'Andalus'}
         </Text>
         {!compact ? (
           <Text style={styles.subtitle}>

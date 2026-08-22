@@ -1,9 +1,10 @@
 import React, { useContext } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ScreenHeader from '../components/ScreenHeader';
+import LoadingIndicator from '../components/LoadingIndicator';
 import { Text } from '../components/Typography';
 import { AppContext } from '../context/AppContext';
 import { APP_ROUTES } from '../constants/navigation';
@@ -22,9 +23,10 @@ export default function AdminProductListScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={[styles.heading, { flexDirection: getRowDirection(isRTL) }]}>
           <View><Text style={[styles.title, { textAlign: getTextAlign(isRTL) }]}>{language === 'ar' ? 'المنتجات الحالية' : 'Current products'}</Text><Text style={styles.count}>{products.length} {language === 'ar' ? 'منتج' : 'products'}</Text></View>
-          <Pressable style={styles.refresh} onPress={refreshCatalog}><Ionicons name="refresh" size={18} color={colors.secondary} /><Text style={styles.refreshText}>{isCatalogLoading ? '...' : language === 'ar' ? 'تحديث' : 'Refresh'}</Text></Pressable>
+          <Pressable style={styles.refresh} onPress={refreshCatalog} disabled={isCatalogLoading}>{isCatalogLoading ? <ActivityIndicator size="small" color={colors.secondary} /> : <Ionicons name="refresh" size={18} color={colors.secondary} />}<Text style={styles.refreshText}>{language === 'ar' ? 'تحديث' : 'Refresh'}</Text></Pressable>
         </View>
 
+        {!products.length && isCatalogLoading ? <LoadingIndicator /> : null}
         {!products.length && !isCatalogLoading ? <View style={styles.empty}><Ionicons name="cube-outline" size={30} color={colors.secondary} /><Text style={styles.emptyText}>{language === 'ar' ? 'لا توجد منتجات حالياً.' : 'No products available.'}</Text></View> : null}
 
         {products.map((item) => (

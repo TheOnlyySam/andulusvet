@@ -14,7 +14,18 @@ export default function PrivacyPolicyScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScreenHeader title={t('legal.privacyTitle')} subtitle={t('legal.privacySubtitle')} showLanguage={false} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {['privacyIntro', 'privacyData', 'privacyUsage', 'privacySharing', 'privacyRights'].map((key) => (
+        <Text style={[styles.updatedText, { textAlign: getTextAlign(isRTL) }]}>{t('legal.privacyUpdated')}</Text>
+        {[
+          'privacyIntro',
+          'privacyData',
+          'privacyUsage',
+          'privacyPayments',
+          'privacySharing',
+          'privacyStorage',
+          'privacyRetention',
+          'privacyRights',
+          'privacyContact'
+        ].map((key) => (
           <View key={key} style={styles.card}>
             <Text style={[styles.sectionTitle, { textAlign: getTextAlign(isRTL) }]}>{t(`legal.${key}Title`)}</Text>
             <Text style={[styles.bodyText, { textAlign: getTextAlign(isRTL) }]}>{t(`legal.${key}Body`)}</Text>
@@ -33,6 +44,11 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingBottom: spacing.xxl
+  },
+  updatedText: {
+    color: colors.textSoft,
+    fontSize: typography.bodySm,
+    marginBottom: spacing.md
   },
   card: {
     backgroundColor: '#fff',

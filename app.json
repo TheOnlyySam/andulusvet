@@ -1,8 +1,9 @@
 {
   "expo": {
-    "name": "مجموعة الاندلس البيطرية",
+    "name": "الاندلس",
     "slug": "andulusvet-app",
     "version": "1.0.0",
+    "scheme": "com.andalus.vet",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "icon": "./assets/branding/Untitled-1.png",
@@ -15,7 +16,7 @@
       "**/*"
     ],
     "android": {
-      "package": "com.andulusvet.client",
+      "package": "com.andalus.vet",
       "adaptiveIcon": {
         "foregroundImage": "./assets/branding/Untitled-1.png",
         "backgroundColor": "#F4FAFA"

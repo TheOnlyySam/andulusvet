@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Image, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import FormField from './FormField';
@@ -7,6 +7,7 @@ import OptionSelector from './OptionSelector';
 import { Text } from './Typography';
 import { ANIMAL_OPTIONS, PRODUCT_TYPE_OPTIONS } from '../constants/productOptions';
 import { useLocalization } from '../context/LocalizationContext';
+import { useAppFeedback } from '../context/AppFeedbackContext';
 import { uploadProductImage } from '../services/storageService';
 import { colors, radius, shadows, spacing, typography } from '../theme';
 import { getTextAlign, pickLocalizedText } from '../utils/format';
@@ -56,6 +57,7 @@ function fromProduct(product) {
 
 export default function AdminProductForm({ initialProduct, onSubmit, submitLabel, successMessage }) {
   const { language, isRTL, t } = useLocalization();
+  const { showAlert, withLoading } = useAppFeedback();
   const [form, setForm] = useState(() => fromProduct(initialProduct));
   const [saving, setSaving] = useState(false);
 
@@ -69,7 +71,7 @@ export default function AdminProductForm({ initialProduct, onSubmit, submitLabel
 
   const chooseImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) return Alert.alert(t('alerts.warning'), t('alerts.permissionPhotos'));
+    if (!permission.granted) return showAlert(t('alerts.warning'), t('alerts.permissionPhotos'));
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.82 });
     if (!result.canceled && result.assets?.length) {
       const asset = result.assets[0];
@@ -79,27 +81,29 @@ export default function AdminProductForm({ initialProduct, onSubmit, submitLabel
 
   const save = async () => {
     if (!form.nameAr.trim() || !form.nameEn.trim() || !form.brandAr.trim() || !form.brandEn.trim() || !form.price) {
-      return Alert.alert(t('alerts.missingData'), t('admin.productValidation'));
+      return showAlert(t('alerts.missingData'), t('admin.productValidation'));
     }
     try {
       setSaving(true);
-      const imageUrl = form.image?.existing ? form.image.uri : form.image ? await uploadProductImage(form.image) : '';
-      await onSubmit({
-        name: { ar: form.nameAr.trim(), en: form.nameEn.trim() },
-        brand: { ar: form.brandAr.trim(), en: form.brandEn.trim() },
-        desc: { ar: form.descAr.trim(), en: form.descEn.trim() },
-        categoryId: form.categoryId,
-        animalType: form.animalType,
-        lifeStage: form.lifeStage.trim() || null,
-        price: Number(form.price),
-        image: imageUrl,
-        isActive: form.isActive,
-        is_active: form.isActive
-      });
-      Alert.alert(t('alerts.success'), successMessage);
+      await withLoading(async () => {
+        const imageUrl = form.image?.existing ? form.image.uri : form.image ? await uploadProductImage(form.image) : '';
+        await onSubmit({
+          name: { ar: form.nameAr.trim(), en: form.nameEn.trim() },
+          brand: { ar: form.brandAr.trim(), en: form.brandEn.trim() },
+          desc: { ar: form.descAr.trim(), en: form.descEn.trim() },
+          categoryId: form.categoryId,
+          animalType: form.animalType,
+          lifeStage: form.lifeStage.trim() || null,
+          price: Number(form.price),
+          image: imageUrl,
+          isActive: form.isActive,
+          is_active: form.isActive
+        });
+      }, t('feedback.saving'));
+      showAlert(t('alerts.success'), successMessage);
       if (!initialProduct) setForm(emptyForm);
     } catch (error) {
-      Alert.alert(t('alerts.error'), error.message);
+      showAlert(t('alerts.error'), error.message);
     } finally {
       setSaving(false);
     }
@@ -138,8 +142,8 @@ export default function AdminProductForm({ initialProduct, onSubmit, submitLabel
       {form.image?.uri ? <Image source={{ uri: form.image.uri }} style={styles.preview} resizeMode="cover" /> : null}
 
       <Pressable style={({ pressed }) => [styles.submit, pressed && { opacity: 0.75 }]} onPress={save} disabled={saving}>
-        <Ionicons name={initialProduct ? 'save-outline' : 'add-circle-outline'} size={21} color="#fff" />
-        <Text style={styles.submitText}>{saving ? t('common.loading') : submitLabel}</Text>
+        {saving ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name={initialProduct ? 'save-outline' : 'add-circle-outline'} size={21} color="#fff" />}
+        <Text style={styles.submitText}>{saving ? t('common.working') : submitLabel}</Text>
       </Pressable>
     </View>
   );

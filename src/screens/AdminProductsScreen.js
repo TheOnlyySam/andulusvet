@@ -1,7 +1,8 @@
 import React, { useContext } from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AdminProductForm from '../components/AdminProductForm';
+import KeyboardAwareScrollView from '../components/KeyboardAwareScrollView';
 import ScreenHeader from '../components/ScreenHeader';
 import { AppContext } from '../context/AppContext';
 import { useLocalization } from '../context/LocalizationContext';
@@ -14,9 +15,9 @@ export default function AdminProductsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScreenHeader title={t('admin.productsTitle')} subtitle={t('admin.productsSubtitle')} />
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <KeyboardAwareScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <AdminProductForm onSubmit={createAdminProduct} submitLabel={t('admin.saveProduct')} successMessage={t('admin.productCreated')} />
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

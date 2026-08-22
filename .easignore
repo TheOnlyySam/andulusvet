@@ -1,0 +1,13 @@
+.git/
+.expo/
+.expo-export-check/
+.env
+.env.*
+!.env.example
+node_modules/
+android/.gradle/
+android/**/build/
+deployment_cert.der
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

@@ -30,7 +30,7 @@ export async function fetchNotifications({ userId, role }) {
     .order('created_at', { ascending: false });
 
   if (role !== 'admin') {
-    query = query.or(`audience.eq.all,user_id.eq.${userId}`);
+    query = query.eq('user_id', userId);
   }
 
   const { data, error } = await query;
@@ -61,10 +61,10 @@ export async function createNotification(payload) {
     title_en: payload.title?.en || '',
     message_ar: payload.message?.ar || payload.message || '',
     message_en: payload.message?.en || payload.message || '',
-    audience: payload.audience === 'user' ? 'user' : 'all',
+    audience: payload.audience === 'admin' ? 'admin' : 'user',
     type: payload.type || 'general',
     is_read: payload.is_read === true,
-    user_id: payload.audience === 'user' ? payload.user_id || null : null
+    user_id: payload.user_id || null
   };
 
   const { data, error } = await supabase

@@ -1,3 +1,5 @@
+export const CART_DELIVERY_FEE_IQD = 5000;
+
 export function normalizeDiscountRule(rule) {
   return {
     ...rule,
@@ -10,6 +12,7 @@ export function normalizeDiscountRule(rule) {
 
 export function calculateDiscounts(cartItems, rules = []) {
   const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.qty, 0);
+  const deliveryFee = cartItems.length ? CART_DELIVERY_FEE_IQD : 0;
   const appliedDiscounts = rules
     .map(normalizeDiscountRule)
     .filter((rule) => rule.isActive && subtotal >= Number(rule.threshold || 0));
@@ -22,11 +25,12 @@ export function calculateDiscounts(cartItems, rules = []) {
     return sum + rule.value;
   }, 0);
 
-  const total = Math.max(subtotal - discountAmount, 0);
+  const total = Math.max(subtotal - discountAmount, 0) + deliveryFee;
 
   return {
     subtotal,
     discountAmount,
+    deliveryFee,
     total,
     appliedDiscounts
   };

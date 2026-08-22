@@ -1,5 +1,5 @@
 import { calculateDiscounts } from './discountService';
-import { formatCurrency, toWesternDigits } from '../utils/format';
+import { formatCurrency, localizeDigits } from '../utils/format';
 
 export function buildCheckoutSummary(cartItems, discountRules = []) {
   return calculateDiscounts(cartItems, discountRules);
@@ -13,7 +13,7 @@ export function buildWhatsappOrderMessage({ language, t, cartItems, checkoutDraf
 
   const lines = cartItems.map(
     (item) =>
-      `- ${item.displayName || item.name} | ${t('cart.quantity')}: ${item.qty} | ${formatCurrency(item.price, language)}`
+      `- ${item.displayName || item.name} | ${t('cart.quantity')}: ${item.qty} | ${formatCurrency(item.price, language)} ${t('cart.iqd')}`
   );
 
   const header = language === 'ar' ? 'طلب جديد من التطبيق' : 'New order from the app';
@@ -30,8 +30,9 @@ export function buildWhatsappOrderMessage({ language, t, cartItems, checkoutDraf
     '',
     ...lines,
     '',
-    `${t('cart.subtotal')}: ${formatCurrency(checkoutSummary.subtotal, language)}`,
-    `${t('cart.discount')}: ${formatCurrency(checkoutSummary.discountAmount, language)}`,
-    `${t('cart.total')}: ${formatCurrency(checkoutSummary.total, language)}`
-  ].map(toWesternDigits).join('\n');
+    `${t('cart.subtotal')}: ${formatCurrency(checkoutSummary.subtotal, language)} ${t('cart.iqd')}`,
+    `${t('cart.discount')}: ${formatCurrency(checkoutSummary.discountAmount, language)} ${t('cart.iqd')}`,
+    `${t('cart.deliveryFee')}: + ${formatCurrency(checkoutSummary.deliveryFee, language)} ${t('cart.iqd')}`,
+    `${t('cart.total')}: ${formatCurrency(checkoutSummary.total, language)} ${t('cart.iqd')}`
+  ].map((line) => localizeDigits(line, language)).join('\n');
 }

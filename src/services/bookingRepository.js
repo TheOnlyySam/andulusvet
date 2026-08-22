@@ -27,6 +27,7 @@ function toVaccineBookRow(payload) {
     location: payload.location || '',
     pet_name: payload.pet_name || payload.petName || '',
     pet_type: payload.pet_type || payload.petType || '',
+    pet_category: payload.pet_category || payload.petCategory || payload.pet_type || payload.petType || '',
     pet_sex: payload.pet_sex || payload.petSex || '',
     pet_breed: payload.pet_breed || payload.petBreed || '',
     first_visit_date_iso: payload.first_visit_date_iso || payload.firstVisitDateIso || '',
@@ -70,6 +71,7 @@ function normalizeBook(book) {
     clientName: book.clientName || book.client_name || '',
     petName: book.petName || book.pet_name || '',
     petType: book.petType || book.pet_type || '',
+    petCategory: book.petCategory || book.pet_category || book.petType || book.pet_type || '',
     petSex: book.petSex || book.pet_sex || '',
     petBreed: book.petBreed || book.pet_breed || '',
     firstVisitDateIso: book.firstVisitDateIso || book.first_visit_date_iso || '',
@@ -150,7 +152,8 @@ export async function createVaccineBookRecord(payload) {
     missingColumnMessage.includes('paid_at');
   const petColumnMissing =
     missingColumnMessage.includes('pet_sex') ||
-    missingColumnMessage.includes('pet_breed');
+    missingColumnMessage.includes('pet_breed') ||
+    missingColumnMessage.includes('pet_category');
 
   if (optionalColumnMissing || petColumnMissing) {
     const fallbackPayload = toVaccineBookRow(payload);
@@ -162,6 +165,7 @@ export async function createVaccineBookRecord(payload) {
     delete fallbackPayload.paid_at;
     delete fallbackPayload.pet_sex;
     delete fallbackPayload.pet_breed;
+    delete fallbackPayload.pet_category;
     bookResponse = await insertBook(fallbackPayload);
   }
 
