@@ -10,5 +10,6 @@ export const APP_ROUTES = {
   adminProductList: 'AdminProductListScreen',
   adminEditProduct: 'AdminEditProductScreen',
   adminDiscounts: 'AdminDiscountsScreen',
+  adminPayments: 'AdminPaymentsScreen',
   adminVaccines: 'AdminVaccinesScreen'
 };

@@ -26,6 +26,7 @@ import AdminProductsScreen from './src/screens/AdminProductsScreen';
 import AdminProductListScreen from './src/screens/AdminProductListScreen';
 import AdminEditProductScreen from './src/screens/AdminEditProductScreen';
 import AdminDiscountsScreen from './src/screens/AdminDiscountsScreen';
+import AdminPaymentsScreen from './src/screens/AdminPaymentsScreen';
 import AdminVaccinesScreen from './src/screens/AdminVaccinesScreen';
 import ToastBanner from './src/components/ToastBanner';
 import { Text } from './src/components/Typography';
@@ -220,6 +221,7 @@ function AppShell() {
         <Stack.Screen name={APP_ROUTES.adminProductList} component={AdminProductListScreen} />
         <Stack.Screen name={APP_ROUTES.adminEditProduct} component={AdminEditProductScreen} />
         <Stack.Screen name={APP_ROUTES.adminDiscounts} component={AdminDiscountsScreen} />
+        <Stack.Screen name={APP_ROUTES.adminPayments} component={AdminPaymentsScreen} />
         <Stack.Screen name={APP_ROUTES.adminVaccines} component={AdminVaccinesScreen} />
       </Stack.Navigator>
     </NavigationContainer>

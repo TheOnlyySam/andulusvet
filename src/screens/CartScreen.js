@@ -114,34 +114,21 @@ export default function CartScreen() {
     saveCheckoutDraft(customerDraft).catch(() => null);
   }, [customerDraft, isCheckoutDraftReady]);
 
-  const reserveOrder = async () => {
-    if (!cart.length) {
-      Alert.alert(t('alerts.emptyCart'), t('cart.emptyMessage'));
-      return;
-    }
+  const getWhatsappCartItems = () =>
+    cart.map((item) => ({
+      ...item,
+      displayName: pickLocalizedText(item.name, language)
+    }));
 
-    if (!customerName.trim() || !phoneNumber1.trim() || !governorate.trim() || !district.trim() || !closestLandmark.trim() || !placeOfResidence.trim()) {
-      Alert.alert(t('alerts.missingData'), t('cart.missingCheckout'));
-      return;
-    }
-
+  const openWhatsappOrder = async ({ checkout, paymentStatus = 'unpaid', paymentId } = {}) => {
     const payload = buildWhatsappOrderMessage({
       language,
       t,
       summary: cartSummary,
-      cartItems: cart.map((item) => ({
-        ...item,
-        displayName: pickLocalizedText(item.name, language)
-      })),
-      checkoutDraft: {
-        customerName: customerName.trim(),
-        phoneNumber1: phoneNumber1.trim(),
-        phoneNumber2: phoneNumber2.trim(),
-        governorate: governorate.trim(),
-        district: district.trim(),
-        closestLandmark: closestLandmark.trim(),
-        placeOfResidence: placeOfResidence.trim()
-      }
+      cartItems: getWhatsappCartItems(),
+      checkoutDraft: checkout,
+      paymentStatus,
+      paymentId
     });
 
     const whatsappUrl = `https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(payload)}`;
@@ -153,6 +140,14 @@ export default function CartScreen() {
 
     await Linking.openURL(whatsappUrl);
     Alert.alert(t('alerts.success'), t('alerts.orderOpened'));
+    return true;
+  };
+
+  const reserveOrder = async () => {
+    const checkout = getValidatedCheckoutDraft();
+    if (!checkout) return;
+
+    await openWhatsappOrder({ checkout, paymentStatus: 'unpaid' });
   };
 
   const getValidatedCheckoutDraft = () => {
@@ -222,6 +217,14 @@ export default function CartScreen() {
 
       const status = String(result.payment?.status || result.gateway?.status || '').toUpperCase();
       if (status === 'SUCCESS') {
+        const checkout = getValidatedCheckoutDraft();
+        if (!checkout) return;
+
+        await openWhatsappOrder({
+          checkout,
+          paymentStatus: 'paid',
+          paymentId: result.payment?.id || lastPaymentId
+        });
         clearCart();
         showAlert(t('alerts.success'), t('alerts.paymentSuccess'));
       } else if (['PENDING', 'INITIATED', 'CREATED'].includes(status)) {

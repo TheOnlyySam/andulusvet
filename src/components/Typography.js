@@ -13,9 +13,15 @@ function getBrandFont(style) {
   return usesBoldFace(style) ? fontFamily.arabicBold : fontFamily.arabicLight;
 }
 
+function shouldKeepLatinDigits(value) {
+  const text = String(value);
+  return /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(text);
+}
+
 function normalizeChildren(children, language) {
   return React.Children.map(children, (child) => {
     if (typeof child !== 'string' && typeof child !== 'number') return child;
+    if (shouldKeepLatinDigits(child)) return toWesternDigits(String(child));
 
     const localized = localizeDigits(child, language);
     if (language === 'ar') return localized;
@@ -45,10 +51,15 @@ export const Text = forwardRef(function Text({ style, children, ...props }, ref)
 export const TextInput = forwardRef(function TextInput({ style, value, defaultValue, placeholder, onChangeText, ...props }, ref) {
   const { language } = useLocalization();
   const brandFont = getBrandFont(style);
-  const localizedValue = typeof value === 'string' ? localizeDigits(value, language) : value;
-  const localizedDefaultValue = typeof defaultValue === 'string' ? localizeDigits(defaultValue, language) : defaultValue;
-  const localizedPlaceholder = typeof placeholder === 'string' ? localizeDigits(placeholder, language) : placeholder;
   const latinKeyboard = ['email-address', 'phone-pad', 'numeric', 'number-pad', 'decimal-pad'].includes(props.keyboardType);
+  const keepLatinText = props.keyboardType === 'email-address';
+  const localizeInputText = (text) => {
+    if (typeof text !== 'string') return text;
+    return keepLatinText ? toWesternDigits(text) : localizeDigits(text, language);
+  };
+  const localizedValue = localizeInputText(value);
+  const localizedDefaultValue = localizeInputText(defaultValue);
+  const localizedPlaceholder = localizeInputText(placeholder);
   const containsDigits = /[0-9]/.test(toWesternDigits(value || defaultValue || placeholder || ''));
   const inputFont = language === 'en' && (latinKeyboard || containsDigits) ? 'System' : brandFont;
 

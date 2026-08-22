@@ -20,6 +20,7 @@ export default function AdminHomeScreen() {
     { key: APP_ROUTES.adminProducts, icon: 'add-circle-outline', color: '#E7F7F7', title: language === 'ar' ? 'إضافة منتج' : 'Add product', subtitle: language === 'ar' ? 'إضافة منتج جديد إلى المتجر' : 'Create a new product for the shop' },
     { key: APP_ROUTES.adminProductList, icon: 'create-outline', color: '#EAF3FF', title: language === 'ar' ? 'تعديل المنتجات' : 'Edit products', subtitle: language === 'ar' ? 'اختيار منتج حالي وتعديل بياناته' : 'Select and update an existing product' },
     { key: APP_ROUTES.adminDiscounts, icon: 'pricetag-outline', color: '#FFF5DF', title: t('admin.discountsTitle'), subtitle: t('admin.discountsSubtitle') },
+    { key: APP_ROUTES.adminPayments, icon: 'card-outline', color: '#E9F8EF', title: language === 'ar' ? 'المدفوعات' : 'Payments', subtitle: language === 'ar' ? 'متابعة مدفوعات الطلبات والحالة' : 'Review order payments and status' },
     { key: APP_ROUTES.adminVaccines, icon: 'medkit-outline', color: '#EEF0FF', title: t('admin.vaccinesTitle'), subtitle: t('admin.vaccinesSubtitle') }
   ];
 

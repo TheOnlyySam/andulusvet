@@ -3,6 +3,7 @@ import React, { useContext, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  KeyboardAvoidingView,
   Linking,
   Platform,
   RefreshControl,
@@ -13,6 +14,7 @@ import {
 } from 'react-native';
 import { Text } from '../components/Typography';
 import { Ionicons } from '@expo/vector-icons';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
@@ -20,7 +22,6 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import FormField from '../components/FormField';
-import KeyboardAwareScrollView from '../components/KeyboardAwareScrollView';
 import LoadingIndicator from '../components/LoadingIndicator';
 import ScreenHeader from '../components/ScreenHeader';
 import { AppContext } from '../context/AppContext';
@@ -232,6 +233,7 @@ function escapeHtml(value) {
 }
 
 export default function PetsVaccinesScreen() {
+  const tabBarHeight = useBottomTabBarHeight();
   const { language, isRTL, t } = useLocalization();
   const { showAlert, withLoading } = useAppFeedback();
   const Alert = { alert: showAlert };
@@ -301,6 +303,7 @@ export default function PetsVaccinesScreen() {
   const dewormingRows = useMemo(() => buildDewormingSchedule(firstVisitDate), [firstVisitDate]);
   const nextCreateVaccineDose = useMemo(() => getNextPending(scheduleRows), [scheduleRows]);
   const nextCreateDewormingDose = useMemo(() => getNextPending(dewormingRows), [dewormingRows]);
+  const bottomContentOffset = tabBarHeight + spacing.xl;
 
   const selectedBook = useMemo(
     () => vaccineBooksForUser.find((book) => book.id === selectedBookId) || null,
@@ -880,8 +883,9 @@ export default function PetsVaccinesScreen() {
         </TouchableOpacity>
 
         <ScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, { paddingBottom: bottomContentOffset }]}
           showsVerticalScrollIndicator={false}
+          scrollIndicatorInsets={{ bottom: bottomContentOffset }}
           refreshControl={<RefreshControl refreshing={isBooksLoading} onRefresh={refreshBooksForCurrentUser} tintColor={colors.secondary} colors={[colors.secondary]} />}
         >
           <View style={styles.card}>
@@ -1067,17 +1071,31 @@ export default function PetsVaccinesScreen() {
   if (view === 'create') {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <ScreenHeader title={t('books.createTitle')} subtitle={t('books.listSubtitle')} />
-        <TouchableOpacity style={styles.backBtn} onPress={() => setView('list')}>
-          <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={16} color={colors.secondary} />
-          <Text style={styles.backTxt}>{t('common.back')}</Text>
-        </TouchableOpacity>
+        <View style={[styles.createHeader, { flexDirection: getRowDirection(isRTL) }]}>
+          <Text numberOfLines={1} style={[styles.createHeaderTitle, { textAlign: getTextAlign(isRTL) }]}>
+            {t('books.createTitle')}
+          </Text>
+          <TouchableOpacity style={[styles.createBackBtn, { flexDirection: getRowDirection(isRTL) }]} onPress={() => setView('list')}>
+            <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={16} color="#fff" />
+            <Text style={styles.createBackTxt}>{t('common.back')}</Text>
+          </TouchableOpacity>
+        </View>
 
-        <KeyboardAwareScrollView
-          contentContainerStyle={styles.content}
-          showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={isBooksLoading} onRefresh={refreshBooksForCurrentUser} tintColor={colors.secondary} colors={[colors.secondary]} />}
+        <KeyboardAvoidingView
+          style={styles.createFlow}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
+          <ScrollView
+            style={styles.createScroll}
+            contentContainerStyle={[styles.content, styles.createContent]}
+            showsVerticalScrollIndicator
+            scrollIndicatorInsets={{ bottom: spacing.lg }}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+            nestedScrollEnabled
+            overScrollMode="always"
+            refreshControl={<RefreshControl refreshing={isBooksLoading} onRefresh={refreshBooksForCurrentUser} tintColor={colors.secondary} colors={[colors.secondary]} />}
+          >
           <View style={styles.card}>
             <Text style={[styles.sectionTitle, { textAlign: getTextAlign(isRTL) }]}>{t('books.ownerPetSection')}</Text>
             {currentProfile?.role !== 'admin' ? (
@@ -1254,11 +1272,14 @@ export default function PetsVaccinesScreen() {
               <Text style={[styles.empty, { textAlign: getTextAlign(isRTL) }]}>{t('books.noUpcomingDoses')}</Text>
             )}
           </View>
-          <TouchableOpacity style={[styles.saveBtn, isSaving && styles.disabledBtn]} onPress={saveBook} disabled={isSaving}>
-            {isSaving ? <ActivityIndicator size="small" color="#fff" /> : null}
-            <Text style={styles.saveTxt}>{t('common.save')}</Text>
-          </TouchableOpacity>
-        </KeyboardAwareScrollView>
+          </ScrollView>
+          <View style={[styles.saveFooter, { marginBottom: tabBarHeight }]}>
+            <TouchableOpacity style={[styles.saveBtn, isSaving && styles.disabledBtn]} onPress={saveBook} disabled={isSaving}>
+              {isSaving ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="save-outline" size={20} color="#fff" />}
+              <Text style={styles.saveTxt}>{t('common.save')}</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     );
   }
@@ -1268,8 +1289,9 @@ export default function PetsVaccinesScreen() {
       <ScreenHeader title={t('books.title')} subtitle={t('books.listSubtitle')} />
 
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: bottomContentOffset }]}
         showsVerticalScrollIndicator={false}
+        scrollIndicatorInsets={{ bottom: bottomContentOffset }}
         refreshControl={<RefreshControl refreshing={isBooksLoading} onRefresh={refreshBooksForCurrentUser} tintColor={colors.secondary} colors={[colors.secondary]} />}
       >
         <View style={styles.booksHero}>
@@ -1359,6 +1381,56 @@ const styles = StyleSheet.create({
   content: {
     paddingBottom: 120,
     gap: 12
+  },
+  createFlow: {
+    flex: 1,
+    minHeight: 0
+  },
+  createScroll: {
+    flex: 1
+  },
+  createContent: {
+    paddingBottom: spacing.lg
+  },
+  createHeader: {
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+    backgroundColor: colors.secondary,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginTop: spacing.xs,
+    marginBottom: spacing.sm,
+    ...shadows.soft
+  },
+  createHeaderTitle: {
+    flex: 1,
+    color: '#fff',
+    fontSize: typography.h3,
+    fontWeight: '900'
+  },
+  createBackBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    minHeight: 36,
+    borderRadius: radius.md,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    paddingHorizontal: spacing.sm
+  },
+  createBackTxt: {
+    color: '#fff',
+    fontWeight: '900',
+    fontSize: typography.caption
+  },
+  saveFooter: {
+    flexShrink: 0,
+    backgroundColor: colors.background,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm
   },
   warningCard: {
     backgroundColor: '#FFF2EF',
