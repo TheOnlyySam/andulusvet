@@ -1,12 +1,11 @@
-import React, { useCallback, useContext, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ScreenHeader from '../components/ScreenHeader';
-import { Text, TextInput } from '../components/Typography';
-import { AppContext } from '../context/AppContext';
+import { Text } from '../components/Typography';
 import { useAppFeedback } from '../context/AppFeedbackContext';
 import { useLocalization } from '../context/LocalizationContext';
-import { fetchAdminPayments } from '../services/paymentRepository';
+import { fetchMyPayments } from '../services/paymentRepository';
 import { colors, radius, shadows, spacing, typography } from '../theme';
 import { formatCurrency, formatDate, getTextAlign, pickLocalizedText } from '../utils/format';
 
@@ -15,64 +14,45 @@ function isPaidPayment(payment) {
   return status === 'SUCCESS' || Boolean(payment.paid_at);
 }
 
-function getCheckoutValue(checkout, key) {
-  if (!checkout || typeof checkout !== 'object') return '';
-  return checkout[key] || '';
-}
-
 function normalizeCartItems(items) {
   return Array.isArray(items) ? items : [];
 }
 
-export default function AdminPaymentsScreen() {
+export default function MyOrdersScreen() {
   const { language, isRTL, t } = useLocalization();
   const { showAlert } = useAppFeedback();
-  const { isAdmin } = useContext(AppContext);
-  const [payments, setPayments] = useState([]);
+  const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [search, setSearch] = useState('');
 
   const copy = {
-    title: language === 'ar' ? 'المدفوعات' : 'Payments',
-    subtitle: language === 'ar' ? 'تحقق من حالة مدفوعات الطلبات الإلكترونية' : 'Check online order payment status',
-    empty: language === 'ar' ? 'لا توجد مدفوعات حالياً.' : 'No payments yet.',
-    status: language === 'ar' ? 'الحالة' : 'Status',
+    title: language === 'ar' ? 'طلباتي' : 'My Orders',
+    subtitle: language === 'ar' ? 'تابع طلباتك والمدفوعات الخاصة بحسابك' : 'Track your orders and payment status',
+    empty: language === 'ar' ? 'لا توجد طلبات بعد.' : 'No orders yet.',
     paid: language === 'ar' ? 'مدفوع' : 'Paid',
-    unpaid: language === 'ar' ? 'غير مدفوع' : 'Unpaid',
-    customer: language === 'ar' ? 'الزبون' : 'Customer',
-    phone: language === 'ar' ? 'الهاتف' : 'Phone',
+    unpaid: language === 'ar' ? 'بانتظار الدفع' : 'To be paid',
+    orderNumber: language === 'ar' ? 'رقم الطلب' : 'Order number',
+    paymentId: language === 'ar' ? 'رقم الدفع' : 'Payment ID',
     paidAt: language === 'ar' ? 'وقت الدفع' : 'Paid at',
     items: language === 'ar' ? 'المنتجات' : 'Items',
-    paymentId: language === 'ar' ? 'رقم الدفع' : 'Payment ID',
-    orderNumber: language === 'ar' ? 'رقم الطلب' : 'Order number',
-    search: language === 'ar' ? 'ابحث برقم الطلب أو اسم الزبون' : 'Search order number or customer',
     cart: language === 'ar' ? 'طلب متجر' : 'Cart order',
     vaccine: language === 'ar' ? 'دفتر لقاحات' : 'Vaccine book'
   };
 
-  const loadPayments = useCallback(async () => {
+  const loadOrders = useCallback(async () => {
     setIsLoading(true);
     try {
-      const next = await fetchAdminPayments({ search });
-      setPayments(next);
+      const next = await fetchMyPayments();
+      setOrders(next);
     } catch (error) {
       showAlert(t('alerts.error'), error.message || t('alerts.error'));
     } finally {
       setIsLoading(false);
     }
-  }, [search, showAlert, t]);
+  }, [showAlert, t]);
 
   useEffect(() => {
-    if (isAdmin) loadPayments();
-  }, [isAdmin, loadPayments]);
-
-  if (!isAdmin) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <ScreenHeader title={copy.title} subtitle={t('admin.noAccess')} />
-      </SafeAreaView>
-    );
-  }
+    loadOrders();
+  }, [loadOrders]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -80,36 +60,25 @@ export default function AdminPaymentsScreen() {
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={loadPayments} tintColor={colors.secondary} colors={[colors.secondary]} />}
+        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={loadOrders} tintColor={colors.secondary} colors={[colors.secondary]} />}
       >
         {isLoading ? <ActivityIndicator color={colors.secondary} style={styles.loader} /> : null}
-        <View style={styles.searchBox}>
-          <TextInput
-            value={search}
-            onChangeText={setSearch}
-            placeholder={copy.search}
-            autoCapitalize="none"
-            autoCorrect={false}
-            style={[styles.searchInput, { textAlign: getTextAlign(isRTL) }]}
-          />
-        </View>
-        {!isLoading && !payments.length ? (
+        {!isLoading && !orders.length ? (
           <Text style={[styles.emptyText, { textAlign: getTextAlign(isRTL) }]}>{copy.empty}</Text>
         ) : null}
 
-        {payments.map((payment) => {
-          const paid = isPaidPayment(payment);
-          const checkout = payment.checkout_payload || {};
-          const items = normalizeCartItems(payment.cart_payload);
+        {orders.map((order) => {
+          const paid = isPaidPayment(order);
+          const items = normalizeCartItems(order.cart_payload);
           const statusLabel = paid ? copy.paid : copy.unpaid;
-          const purposeLabel = payment.purpose === 'cart' ? copy.cart : copy.vaccine;
+          const purposeLabel = order.purpose === 'cart' ? copy.cart : copy.vaccine;
 
           return (
-            <View key={payment.id} style={styles.card}>
+            <View key={order.id} style={styles.card}>
               <View style={[styles.cardHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                 <View style={styles.cardTitleWrap}>
                   <Text style={[styles.titleText, { textAlign: getTextAlign(isRTL) }]}>{purposeLabel}</Text>
-                  <Text style={[styles.metaText, { textAlign: getTextAlign(isRTL) }]}>{formatDate(payment.created_at, language)}</Text>
+                  <Text style={[styles.metaText, { textAlign: getTextAlign(isRTL) }]}>{formatDate(order.created_at, language)}</Text>
                 </View>
                 <View style={[styles.statusPill, paid ? styles.paidPill : styles.unpaidPill]}>
                   <Text style={[styles.statusPillText, paid ? styles.paidText : styles.unpaidText]}>{statusLabel}</Text>
@@ -117,20 +86,17 @@ export default function AdminPaymentsScreen() {
               </View>
 
               <Text style={[styles.amountText, { textAlign: getTextAlign(isRTL) }]}>
-                {formatCurrency(payment.amount_iqd || 0, language)} {language === 'ar' ? 'د.ع' : 'IQD'}
+                {formatCurrency(order.amount_iqd || 0, language)} {language === 'ar' ? 'د.ع' : 'IQD'}
               </Text>
-              <Text style={[styles.lineText, { textAlign: getTextAlign(isRTL) }]}>{copy.orderNumber}: {payment.order_number || '-'}</Text>
-              <Text style={[styles.lineText, { textAlign: getTextAlign(isRTL) }]}>{copy.status}: {statusLabel}</Text>
-              <Text style={[styles.lineText, { textAlign: getTextAlign(isRTL) }]}>{copy.customer}: {getCheckoutValue(checkout, 'customerName') || '-'}</Text>
-              <Text style={[styles.lineText, { textAlign: getTextAlign(isRTL) }]}>{copy.phone}: {getCheckoutValue(checkout, 'phoneNumber1') || '-'}</Text>
-              <Text style={[styles.lineText, { textAlign: getTextAlign(isRTL) }]}>{copy.paymentId}: {payment.qi_payment_id || payment.id}</Text>
-              <Text style={[styles.lineText, { textAlign: getTextAlign(isRTL) }]}>{copy.paidAt}: {payment.paid_at ? formatDate(payment.paid_at, language) : '-'}</Text>
+              <Text style={[styles.lineText, { textAlign: getTextAlign(isRTL) }]}>{copy.orderNumber}: {order.order_number || '-'}</Text>
+              <Text style={[styles.lineText, { textAlign: getTextAlign(isRTL) }]}>{copy.paymentId}: {order.qi_payment_id || order.id}</Text>
+              <Text style={[styles.lineText, { textAlign: getTextAlign(isRTL) }]}>{copy.paidAt}: {order.paid_at ? formatDate(order.paid_at, language) : '-'}</Text>
 
               {items.length ? (
                 <View style={styles.itemsBox}>
                   <Text style={[styles.itemsTitle, { textAlign: getTextAlign(isRTL) }]}>{copy.items}</Text>
                   {items.map((item, index) => (
-                    <Text key={`${payment.id}-${item.id || index}`} style={[styles.itemText, { textAlign: getTextAlign(isRTL) }]}>
+                    <Text key={`${order.id}-${item.id || index}`} style={[styles.itemText, { textAlign: getTextAlign(isRTL) }]}>
                       {index + 1}. {pickLocalizedText(item.name, language) || item.displayName || '-'} x {item.qty || 1}
                     </Text>
                   ))}
@@ -148,8 +114,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, paddingHorizontal: spacing.md },
   content: { paddingBottom: 140 },
   loader: { marginVertical: spacing.md },
-  searchBox: { backgroundColor: '#fff', borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.md, marginBottom: spacing.md, ...shadows.soft },
-  searchInput: { minHeight: 48, color: colors.text, fontSize: typography.bodySm },
   emptyText: { color: colors.textSoft, fontSize: typography.body, marginTop: spacing.md },
   card: { backgroundColor: '#fff', borderRadius: radius.lg, padding: spacing.md, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.md, ...shadows.card },
   cardHeader: { alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },

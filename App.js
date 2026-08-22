@@ -20,6 +20,7 @@ import SignInScreen from './src/screens/SignInScreen';
 import SignUpScreen from './src/screens/SignUpScreen';
 import PrivacyPolicyScreen from './src/screens/PrivacyPolicyScreen';
 import TermsOfServiceScreen from './src/screens/TermsOfServiceScreen';
+import MyOrdersScreen from './src/screens/MyOrdersScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
 import AdminHomeScreen from './src/screens/AdminHomeScreen';
 import AdminProductsScreen from './src/screens/AdminProductsScreen';
@@ -215,6 +216,7 @@ function AppShell() {
         <Stack.Screen name={APP_ROUTES.signUp} component={SignUpScreen} />
         <Stack.Screen name={APP_ROUTES.privacyPolicy} component={PrivacyPolicyScreen} />
         <Stack.Screen name={APP_ROUTES.termsOfService} component={TermsOfServiceScreen} />
+        <Stack.Screen name={APP_ROUTES.myOrders} component={MyOrdersScreen} />
         <Stack.Screen name={APP_ROUTES.notifications} component={NotificationsScreen} />
         <Stack.Screen name={APP_ROUTES.adminHome} component={AdminHomeScreen} />
         <Stack.Screen name={APP_ROUTES.adminProducts} component={AdminProductsScreen} />

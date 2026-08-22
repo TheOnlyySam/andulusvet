@@ -5,6 +5,7 @@ export const APP_ROUTES = {
   signUp: 'SignUpScreen',
   privacyPolicy: 'PrivacyPolicyScreen',
   termsOfService: 'TermsOfServiceScreen',
+  myOrders: 'MyOrdersScreen',
   adminHome: 'AdminHomeScreen',
   adminProducts: 'AdminProductsScreen',
   adminProductList: 'AdminProductListScreen',

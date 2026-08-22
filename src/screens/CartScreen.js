@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Linking, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../components/Typography';
@@ -16,6 +16,14 @@ import { colors, radius, shadows, spacing, typography } from '../theme';
 import { formatCurrency, getRowDirection, getTextAlign, pickLocalizedText } from '../utils/format';
 
 const WHATSAPP_PHONE = '9647801730506';
+const AUTO_PAYMENT_CHECK_ATTEMPTS = 24;
+const AUTO_PAYMENT_CHECK_INTERVAL_MS = 5000;
+
+function createLocalOrderNumber() {
+  const stamp = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14);
+  const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `ALD-${stamp}-${suffix}`;
+}
 
 export default function CartScreen() {
   const tabBarHeight = useBottomTabBarHeight();
@@ -35,6 +43,8 @@ export default function CartScreen() {
   const [isCheckoutDraftReady, setIsCheckoutDraftReady] = useState(false);
   const [isPaymentLoading, setIsPaymentLoading] = useState(false);
   const [lastPaymentId, setLastPaymentId] = useState(null);
+  const [lastOrderNumber, setLastOrderNumber] = useState(null);
+  const completedPaymentRef = useRef(null);
   const bottomContentOffset = spacing.md;
   const formatIqd = (value) => `${formatCurrency(value, language)} ${t('cart.iqd')}`;
 
@@ -120,7 +130,7 @@ export default function CartScreen() {
       displayName: pickLocalizedText(item.name, language)
     }));
 
-  const openWhatsappOrder = async ({ checkout, paymentStatus = 'unpaid', paymentId } = {}) => {
+  const openWhatsappOrder = async ({ checkout, paymentStatus = 'unpaid', paymentId, orderNumber } = {}) => {
     const payload = buildWhatsappOrderMessage({
       language,
       t,
@@ -128,7 +138,8 @@ export default function CartScreen() {
       cartItems: getWhatsappCartItems(),
       checkoutDraft: checkout,
       paymentStatus,
-      paymentId
+      paymentId,
+      orderNumber
     });
 
     const whatsappUrl = `https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(payload)}`;
@@ -146,8 +157,9 @@ export default function CartScreen() {
   const reserveOrder = async () => {
     const checkout = getValidatedCheckoutDraft();
     if (!checkout) return;
+    const orderNumber = createLocalOrderNumber();
 
-    await openWhatsappOrder({ checkout, paymentStatus: 'unpaid' });
+    await openWhatsappOrder({ checkout, paymentStatus: 'unpaid', orderNumber });
   };
 
   const getValidatedCheckoutDraft = () => {
@@ -172,6 +184,57 @@ export default function CartScreen() {
     };
   };
 
+  const processSuccessfulCartPayment = async ({ payment, checkout, orderNumber }) => {
+    const paymentId = payment?.id || lastPaymentId;
+    if (!paymentId || completedPaymentRef.current === paymentId) return;
+    completedPaymentRef.current = paymentId;
+
+    await openWhatsappOrder({
+      checkout,
+      paymentStatus: 'paid',
+      paymentId,
+      orderNumber: payment?.order_number || orderNumber || lastOrderNumber
+    });
+    clearCart();
+    showAlert(t('alerts.success'), t('alerts.paymentSuccess'));
+  };
+
+  const syncCartPaymentOnce = async ({ paymentId, checkout, orderNumber, showPending = false }) => {
+    const result = await syncPaymentStatus({ paymentId });
+    if (!result.ok) {
+      if (showPending) Alert.alert(t('alerts.error'), result.messageKey ? t(result.messageKey) : result.message || t('alerts.error'));
+      return 'ERROR';
+    }
+
+    const status = String(result.payment?.status || result.gateway?.status || '').toUpperCase();
+    if (status === 'SUCCESS') {
+      await processSuccessfulCartPayment({ payment: result.payment, checkout, orderNumber });
+      return 'SUCCESS';
+    }
+
+    if (['PENDING', 'INITIATED', 'CREATED'].includes(status)) {
+      if (showPending) showAlert(t('alerts.warning'), t('alerts.paymentPending'));
+      return 'PENDING';
+    }
+
+    if (showPending) showAlert(t('alerts.error'), t('alerts.paymentFailed'));
+    return 'FAILED';
+  };
+
+  const pollCartPayment = async ({ paymentId, checkout, orderNumber }) => {
+    for (let attempt = 0; attempt < AUTO_PAYMENT_CHECK_ATTEMPTS; attempt += 1) {
+      if (attempt > 0) {
+        await new Promise((resolve) => setTimeout(resolve, AUTO_PAYMENT_CHECK_INTERVAL_MS));
+      }
+
+      const status = await syncCartPaymentOnce({ paymentId, checkout, orderNumber });
+      if (status === 'SUCCESS' || status === 'FAILED') return status;
+    }
+
+    showAlert(t('alerts.warning'), t('alerts.paymentPending'));
+    return 'PENDING';
+  };
+
   const payCart = async () => {
     const checkout = getValidatedCheckoutDraft();
     if (!checkout) return;
@@ -188,10 +251,16 @@ export default function CartScreen() {
         return;
       }
 
-      setLastPaymentId(result.payment?.id || null);
+      const paymentId = result.payment?.id || null;
+      const orderNumber = result.payment?.order_number || null;
+      setLastPaymentId(paymentId);
+      setLastOrderNumber(orderNumber);
       if (result.formUrl) {
         await Linking.openURL(result.formUrl);
         Alert.alert(t('alerts.success'), t('alerts.paymentOpened'));
+      }
+      if (paymentId) {
+        await pollCartPayment({ paymentId, checkout, orderNumber });
       }
     } finally {
       setIsPaymentLoading(false);
@@ -206,32 +275,13 @@ export default function CartScreen() {
 
     setIsPaymentLoading(true);
     try {
-      const result = await withLoading(
-        () => syncPaymentStatus({ paymentId: lastPaymentId }),
+      const checkout = getValidatedCheckoutDraft();
+      if (!checkout) return;
+
+      await withLoading(
+        () => syncCartPaymentOnce({ paymentId: lastPaymentId, checkout, orderNumber: lastOrderNumber, showPending: true }),
         t('feedback.checkingPayment')
       );
-      if (!result.ok) {
-        Alert.alert(t('alerts.error'), result.messageKey ? t(result.messageKey) : result.message || t('alerts.error'));
-        return;
-      }
-
-      const status = String(result.payment?.status || result.gateway?.status || '').toUpperCase();
-      if (status === 'SUCCESS') {
-        const checkout = getValidatedCheckoutDraft();
-        if (!checkout) return;
-
-        await openWhatsappOrder({
-          checkout,
-          paymentStatus: 'paid',
-          paymentId: result.payment?.id || lastPaymentId
-        });
-        clearCart();
-        showAlert(t('alerts.success'), t('alerts.paymentSuccess'));
-      } else if (['PENDING', 'INITIATED', 'CREATED'].includes(status)) {
-        showAlert(t('alerts.warning'), t('alerts.paymentPending'));
-      } else {
-        showAlert(t('alerts.error'), t('alerts.paymentFailed'));
-      }
     } finally {
       setIsPaymentLoading(false);
     }

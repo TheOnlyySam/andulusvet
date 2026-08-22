@@ -91,6 +91,13 @@ export default function ProfileScreen() {
                 />
               ) : null}
               <ActionCard
+                title={t('profile.myOrders')}
+                subtitle={t('profile.myOrdersHint')}
+                icon="receipt-outline"
+                onPress={() => navigation.navigate(APP_ROUTES.myOrders)}
+                isRTL={isRTL}
+              />
+              <ActionCard
                 title={t('profile.privacyPolicy')}
                 subtitle={t('profile.privacyHint')}
                 icon="document-text-outline"

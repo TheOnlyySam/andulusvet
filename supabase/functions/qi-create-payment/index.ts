@@ -23,6 +23,12 @@ function basicAuth() {
   return `Basic ${btoa(`${QI_USERNAME}:${QI_PASSWORD}`)}`;
 }
 
+function createOrderNumber() {
+  const stamp = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14);
+  const suffix = crypto.randomUUID().replaceAll('-', '').slice(0, 6).toUpperCase();
+  return `ALD-${stamp}-${suffix}`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
@@ -46,6 +52,7 @@ Deno.serve(async (req) => {
   const body = await req.json().catch(() => ({}));
   const purpose = body.purpose === 'cart' ? 'cart' : 'vaccine_book';
   const requestId = crypto.randomUUID();
+  const orderNumber = createOrderNumber();
   const amount = purpose === 'vaccine_book' ? VACCINE_BOOK_PRICE_IQD : Number(body.amountIqd || 0);
 
   if (!amount || amount <= 0) return json({ error: 'A valid payment amount is required.' }, 400);
@@ -70,6 +77,7 @@ Deno.serve(async (req) => {
     .from('payments')
     .insert({
       request_id: requestId,
+      order_number: orderNumber,
       user_id: userData.user.id,
       purpose,
       vaccine_book_id: vaccineBookId,
@@ -103,6 +111,7 @@ Deno.serve(async (req) => {
       app: 'andulusvet',
       purpose,
       localPaymentId: localPayment.id,
+      orderNumber,
       vaccineBookId: vaccineBookId || undefined
     },
     appChannel: false

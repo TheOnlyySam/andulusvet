@@ -1,5 +1,5 @@
 import { calculateDiscounts } from './discountService';
-import { formatCurrency, localizeDigits } from '../utils/format';
+import { formatCurrency, localizeDigits, toWesternDigits } from '../utils/format';
 
 export function buildCheckoutSummary(cartItems, discountRules = []) {
   return calculateDiscounts(cartItems, discountRules);
@@ -12,7 +12,8 @@ export function buildWhatsappOrderMessage({
   checkoutDraft,
   summary,
   paymentStatus = 'unpaid',
-  paymentId
+  paymentId,
+  orderNumber
 }) {
   const checkoutSummary = summary || buildCheckoutSummary(cartItems);
   const locationLine = checkoutDraft.district
@@ -30,8 +31,11 @@ export function buildWhatsappOrderMessage({
 
   const header = language === 'ar' ? 'طلب جديد من التطبيق' : 'New order from the app';
 
+  const latinTokens = [orderNumber, paymentId].filter(Boolean);
+
   return [
     header,
+    orderNumber ? `${language === 'ar' ? 'رقم الطلب' : 'Order number'}: ${orderNumber}` : null,
     `${t('cart.paymentStatus')}: ${paymentStatusLabel}`,
     paymentId ? `${language === 'ar' ? 'رقم عملية الدفع' : 'Payment ID'}: ${paymentId}` : null,
     '',
@@ -49,5 +53,9 @@ export function buildWhatsappOrderMessage({
     `${t('cart.discount')}: ${formatCurrency(checkoutSummary.discountAmount, language)} ${t('cart.iqd')}`,
     `${t('cart.deliveryFee')}: + ${formatCurrency(checkoutSummary.deliveryFee, language)} ${t('cart.iqd')}`,
     `${t('cart.total')}: ${formatCurrency(checkoutSummary.total, language)} ${t('cart.iqd')}`
-  ].filter(Boolean).map((line) => localizeDigits(line, language)).join('\n');
+  ].filter(Boolean).map((line) => (
+    latinTokens.some((token) => String(line).includes(token))
+      ? toWesternDigits(String(line))
+      : localizeDigits(line, language)
+  )).join('\n');
 }

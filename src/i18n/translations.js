@@ -46,7 +46,7 @@ export const translations = {
       failedFile: 'حدث خطأ أثناء اختيار الملف.',
       failedImage: 'حدث خطأ أثناء اختيار الصورة.',
       permissionPhotos: 'يرجى السماح بالوصول للصور من إعدادات التطبيق.',
-      paymentOpened: 'تم فتح صفحة الدفع. بعد إكمال العملية ارجع للتطبيق واضغط فحص حالة الدفع.'
+      paymentOpened: 'تم فتح صفحة الدفع. بعد إكمال العملية ارجع للتطبيق وسيتم فحص حالة الدفع تلقائياً.'
     },
     feedback: {
       signingIn: '\u062c\u0627\u0631\u064a \u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u062f\u062e\u0648\u0644...',
@@ -239,6 +239,8 @@ export const translations = {
       customer: 'عميل',
       adminPanel: 'لوحة الإدارة',
       adminPanelHint: 'إدارة المنتجات والخصومات وملفات اللقاحات من مكان واحد.',
+      myOrders: 'طلباتي',
+      myOrdersHint: 'متابعة الطلبات وحالة الدفع من حسابك.',
       privacyPolicy: 'سياسة الخصوصية',
       privacyHint: 'اعرف كيف نتعامل مع بياناتك ونحميها.',
       termsOfService: 'شروط الاستخدام',
@@ -387,7 +389,7 @@ export const translations = {
       failedFile: 'Something went wrong while picking the file.',
       failedImage: 'Something went wrong while picking the image.',
       permissionPhotos: 'Please allow photo library access from app settings.',
-      paymentOpened: 'The payment page was opened. After completing payment, return to the app and tap check payment status.'
+      paymentOpened: 'The payment page was opened. After completing payment, return to the app and the status will be checked automatically.'
     },
     feedback: {
       signingIn: 'Signing you in...',
@@ -580,6 +582,8 @@ export const translations = {
       customer: 'Customer',
       adminPanel: 'Admin Panel',
       adminPanelHint: 'Manage products, discounts, and vaccine files from one place.',
+      myOrders: 'My Orders',
+      myOrdersHint: 'Track orders and payment status from your account.',
       privacyPolicy: 'Privacy Policy',
       privacyHint: 'See how your data is handled and protected.',
       termsOfService: 'Terms of Service',

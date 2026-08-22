@@ -15,13 +15,15 @@ function getBrandFont(style) {
 
 function shouldKeepLatinDigits(value) {
   const text = String(value);
-  return /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(text);
+  return /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(text) || /\bALD-[A-Z0-9-]+\b/i.test(text);
 }
 
 function normalizeChildren(children, language) {
   return React.Children.map(children, (child) => {
     if (typeof child !== 'string' && typeof child !== 'number') return child;
-    if (shouldKeepLatinDigits(child)) return toWesternDigits(String(child));
+    if (shouldKeepLatinDigits(child)) {
+      return <NativeText style={styles.latinDigits}>{toWesternDigits(String(child))}</NativeText>;
+    }
 
     const localized = localizeDigits(child, language);
     if (language === 'ar') return localized;
@@ -61,7 +63,7 @@ export const TextInput = forwardRef(function TextInput({ style, value, defaultVa
   const localizedDefaultValue = localizeInputText(defaultValue);
   const localizedPlaceholder = localizeInputText(placeholder);
   const containsDigits = /[0-9]/.test(toWesternDigits(value || defaultValue || placeholder || ''));
-  const inputFont = language === 'en' && (latinKeyboard || containsDigits) ? 'System' : brandFont;
+  const inputFont = keepLatinText || (language === 'en' && (latinKeyboard || containsDigits)) ? 'System' : brandFont;
 
   return (
     <NativeTextInput
