@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Linking, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ScreenHeader from '../components/ScreenHeader';
 import { Text } from '../components/Typography';
@@ -8,6 +9,8 @@ import { useLocalization } from '../context/LocalizationContext';
 import { fetchMyPayments } from '../services/paymentRepository';
 import { colors, radius, shadows, spacing, typography } from '../theme';
 import { formatCurrency, formatDate, getTextAlign, pickLocalizedText } from '../utils/format';
+
+const WHATSAPP_PHONE = '9647801730506';
 
 function isPaidPayment(payment) {
   const status = String(payment.status || '').toUpperCase();
@@ -34,8 +37,29 @@ export default function MyOrdersScreen() {
     paymentId: language === 'ar' ? 'رقم الدفع' : 'Payment ID',
     paidAt: language === 'ar' ? 'وقت الدفع' : 'Paid at',
     items: language === 'ar' ? 'المنتجات' : 'Items',
+    askUpdate: language === 'ar' ? 'طلب تحديث حالة الطلب' : 'Ask for update',
     cart: language === 'ar' ? 'طلب متجر' : 'Cart order',
     vaccine: language === 'ar' ? 'دفتر لقاحات' : 'Vaccine book'
+  };
+
+  const askForOrderUpdate = async (order, statusLabel, purposeLabel) => {
+    const message = [
+      language === 'ar' ? 'مرحبا، أريد تحديث حالة هذا الطلب:' : 'Hello, I would like an update for this order:',
+      `${copy.orderNumber}: ${order.order_number || '-'}`,
+      `${copy.paymentId}: ${order.qi_payment_id || order.id}`,
+      `${language === 'ar' ? 'نوع الطلب' : 'Order type'}: ${purposeLabel}`,
+      `${language === 'ar' ? 'حالة الدفع' : 'Payment status'}: ${statusLabel}`,
+      `${language === 'ar' ? 'تاريخ الطلب' : 'Order date'}: ${formatDate(order.created_at, language)}`
+    ].join('\n');
+
+    const whatsappUrl = `https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(message)}`;
+    const supported = await Linking.canOpenURL(whatsappUrl);
+    if (!supported) {
+      showAlert(t('alerts.error'), t('alerts.whatsappUnavailable'));
+      return;
+    }
+
+    await Linking.openURL(whatsappUrl);
   };
 
   const loadOrders = useCallback(async () => {
@@ -102,6 +126,14 @@ export default function MyOrdersScreen() {
                   ))}
                 </View>
               ) : null}
+
+              <TouchableOpacity
+                style={[styles.updateButton, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
+                onPress={() => askForOrderUpdate(order, statusLabel, purposeLabel)}
+              >
+                <Ionicons name="logo-whatsapp" size={18} color="#fff" />
+                <Text style={styles.updateButtonText}>{copy.askUpdate}</Text>
+              </TouchableOpacity>
             </View>
           );
         })}
@@ -130,5 +162,7 @@ const styles = StyleSheet.create({
   unpaidText: { color: '#9A5A00' },
   itemsBox: { backgroundColor: colors.surfaceMuted, borderRadius: radius.md, padding: spacing.sm, marginTop: spacing.sm },
   itemsTitle: { color: colors.secondary, fontSize: typography.bodySm, fontWeight: '900', marginBottom: 4 },
-  itemText: { color: colors.text, fontSize: typography.caption, marginTop: 3 }
+  itemText: { color: colors.text, fontSize: typography.caption, marginTop: 3 },
+  updateButton: { alignItems: 'center', justifyContent: 'center', gap: spacing.xs, backgroundColor: colors.secondary, borderRadius: radius.md, minHeight: 44, marginTop: spacing.md, paddingHorizontal: spacing.md },
+  updateButtonText: { color: '#fff', fontSize: typography.caption, fontWeight: '900' }
 });
