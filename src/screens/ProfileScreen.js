@@ -36,7 +36,7 @@ function ActionCard({ title, subtitle, icon, onPress, tone = 'light', isRTL }) {
 export default function ProfileScreen() {
   const navigation = useNavigation();
   const tabBarHeight = useBottomTabBarHeight();
-  const { isReady, isLoggedIn, isAdmin, currentUser, currentProfile, authSignOut } = useContext(AppContext);
+  const { isReady, isLoggedIn, isAdmin, currentUser, currentProfile, authSignOut, authDeleteAccount } = useContext(AppContext);
   const { isRTL, t } = useLocalization();
   const { showAlert, withLoading } = useAppFeedback();
 
@@ -46,6 +46,29 @@ export default function ProfileScreen() {
   const logout = async () => {
     await withLoading(authSignOut, t('feedback.signingOut'));
     showAlert(t('alerts.success'), t('profile.logoutSuccess'));
+  };
+
+  const deleteAccount = () => {
+    showAlert(
+      t('profile.deleteAccountConfirmTitle'),
+      t('profile.deleteAccountConfirmBody'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('profile.deleteAccount'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await withLoading(authDeleteAccount, t('profile.deleteAccountWorking'));
+              showAlert(t('alerts.success'), t('profile.deleteAccountSuccess'));
+            } catch (error) {
+              showAlert(t('alerts.error'), error.message || t('profile.deleteAccountFailed'));
+            }
+          }
+        }
+      ],
+      { type: 'warning' }
+    );
   };
 
   if (!isReady) {
@@ -161,6 +184,11 @@ export default function ProfileScreen() {
             </Text>
             <Pressable style={styles.logoutButton} onPress={logout}>
               <Text style={styles.logoutText}>{t('profile.logout')}</Text>
+            </Pressable>
+            <Text style={[styles.deleteHint, { textAlign: getTextAlign(isRTL) }]}>{t('profile.deleteAccountHint')}</Text>
+            <Pressable style={styles.deleteButton} onPress={deleteAccount}>
+              <Ionicons name="trash-outline" size={18} color={colors.danger} />
+              <Text style={styles.deleteText}>{t('profile.deleteAccount')}</Text>
             </Pressable>
           </View>
         ) : null}
@@ -312,6 +340,28 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     color: '#fff',
+    fontSize: typography.button,
+    fontWeight: '900'
+  },
+  deleteHint: {
+    color: colors.textSoft,
+    fontSize: typography.bodySm,
+    lineHeight: 20,
+    marginTop: spacing.lg
+  },
+  deleteButton: {
+    minHeight: 48,
+    marginTop: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    borderRadius: radius.md,
+    flexDirection: 'row',
+    gap: spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  deleteText: {
+    color: colors.danger,
     fontSize: typography.button,
     fontWeight: '900'
   }

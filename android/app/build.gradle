@@ -2,6 +2,13 @@ apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
+import groovy.json.JsonSlurper
+
+def easCredentialsFile = rootProject.file('../credentials.json')
+def easKeystore = easCredentialsFile.exists()
+    ? new JsonSlurper().parse(easCredentialsFile).android.keystore
+    : null
+
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
 
 static def versionToNumber(major, minor, patch) {
@@ -114,8 +121,8 @@ android {
         applicationId 'com.andalus.vet'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0.0"
+        versionCode 7
+        versionName "1.0.1"
     }
     signingConfigs {
         debug {
@@ -124,15 +131,21 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        if (easKeystore) {
+            release {
+                storeFile rootProject.file("../${easKeystore.keystorePath}")
+                storePassword easKeystore.keystorePassword
+                keyAlias easKeystore.keyAlias
+                keyPassword easKeystore.keyPassword
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            signingConfig easKeystore ? signingConfigs.release : signingConfigs.debug
             shrinkResources (findProperty('android.enableShrinkResourcesInReleaseBuilds')?.toBoolean() ?: false)
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"

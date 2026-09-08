@@ -2,7 +2,7 @@
   "expo": {
     "name": "الاندلس",
     "slug": "andulusvet-app",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "scheme": "com.andalus.vet",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -17,13 +17,26 @@
     ],
     "android": {
       "package": "com.andalus.vet",
+      "versionCode": 7,
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/branding/Untitled-1.png",
         "backgroundColor": "#F4FAFA"
-      }
+      },
+      "runtimeVersion": "1.0.1"
     },
     "ios": {
-      "bundleIdentifier": "com.andulusvet.app"
+      "bundleIdentifier": "com.andulusvet.app",
+      "supportsTablet": false,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSPhotoLibraryUsageDescription": "Allow Al-Andalus Veterinary Group to select animal and product photos."
+      },
+      "runtimeVersion": {
+        "policy": "appVersion"
+      }
     },
     "extra": {
       "eas": {
@@ -33,6 +46,9 @@
     "owner": "theonlysam",
     "plugins": [
       "expo-font"
-    ]
+    ],
+    "updates": {
+      "url": "https://u.expo.dev/540d85f1-4ed7-459b-a20c-4ebe00fe1b17"
+    }
   }
 }

@@ -163,3 +163,24 @@ export async function signOutUser() {
 
   await setLocalSessionId(null);
 }
+
+export async function deleteCurrentAccount() {
+  const supabase = getSupabaseClient();
+
+  if (supabase) {
+    const { data, error } = await supabase.functions.invoke('delete-account', {
+      body: { confirmation: 'DELETE' }
+    });
+
+    if (error) throw new Error(humanizeAuthError(error));
+    if (!data?.deleted) throw new Error(data?.error || 'Unable to delete this account.');
+
+    await supabase.auth.signOut({ scope: 'local' });
+    return;
+  }
+
+  const currentUserId = await getLocalSessionId();
+  const users = await getStoredUsers();
+  await setStoredUsers(users.filter((user) => user.id !== currentUserId));
+  await setLocalSessionId(null);
+}

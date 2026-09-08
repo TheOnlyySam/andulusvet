@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Notifications from 'expo-notifications';
-import { getAuthBootstrap, signInWithRole, signOutUser, signUpWithRole } from '../services/authService';
+import { deleteCurrentAccount, getAuthBootstrap, signInWithRole, signOutUser, signUpWithRole } from '../services/authService';
 import { fetchProfile, upsertProfile } from '../services/profileService';
 import { fetchProductsFromRepository, createProductInRepository, updateProductInRepository } from '../services/catalogRepository';
 import { fetchDiscountRulesFromRepository, createDiscountRuleInRepository } from '../services/discountRepository';
@@ -230,6 +230,11 @@ export function AppProvider({ children }) {
 
   const authSignOut = async () => {
     await signOutUser();
+    await hydrateUserState(null);
+  };
+
+  const authDeleteAccount = async () => {
+    await deleteCurrentAccount();
     await hydrateUserState(null);
   };
 
@@ -604,6 +609,7 @@ export function AppProvider({ children }) {
     authSignUp,
     authSignIn,
     authSignOut,
+    authDeleteAccount,
     products,
     discountRules,
     vaccineBooks,

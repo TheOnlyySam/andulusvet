@@ -4,6 +4,7 @@ node_modules/
 # Expo and generated bundles
 .expo/
 .expo-export-*/
+.expo-ios-check/
 dist/
 release/
 *.aab
@@ -19,6 +20,8 @@ supabase/.temp/
 android/.gradle/
 android/**/build/
 android/local.properties
+credentials.json
+credentials/
 *.keystore
 *.jks
 *.der
