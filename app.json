@@ -45,7 +45,15 @@
     },
     "owner": "theonlysam",
     "plugins": [
-      "expo-font"
+      "expo-font",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "15.0"
+          }
+        }
+      ]
     ],
     "updates": {
       "url": "https://u.expo.dev/540d85f1-4ed7-459b-a20c-4ebe00fe1b17"
